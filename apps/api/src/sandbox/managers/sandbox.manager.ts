@@ -493,7 +493,7 @@ export class SandboxManager implements TrackableJobExecutions, OnApplicationShut
 
     try {
       // Pass undefined for entrypoint as the backup snapshot already has it baked in and use skipStart
-      await newRunnerAdapter.createSandbox(sandbox, registry, undefined, metadata, undefined, true)
+      await newRunnerAdapter.createSandbox(sandbox, registry, undefined, metadata, true)
       this.logger.debug(`Created sandbox ${sandbox.id} on new runner ${newRunnerId} with skipStart`)
     } catch (e) {
       // Restore original snapshot on failure
