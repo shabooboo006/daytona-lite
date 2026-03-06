@@ -66,7 +66,8 @@
       "options": {
         "buildTarget": "api:build",
         "runBuildTargetDependencies": false,
-        "watch": true
+        "watch": true,
+        "inspect": false
       },
       "configurations": {
         "development": {

@@ -10,6 +10,8 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 COMPOSE_FILE="$ROOT_DIR/docker/docker-compose.dev.yml"
 API_ENV_EXAMPLE="$ROOT_DIR/apps/api/.env.example"
 API_ENV_FILE="$ROOT_DIR/apps/api/.env"
+NODE_MODULES_DIR="$ROOT_DIR/node_modules"
+NX_BIN="$NODE_MODULES_DIR/.bin/nx"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -34,6 +36,113 @@ log_warn() {
 
 log_error() {
   printf "%b\n" "${RED}[ERROR]${NC} $1"
+}
+
+ensure_node_toolchain() {
+  if ! command -v node >/dev/null 2>&1; then
+    log_error "Node.js 未安装，请先安装 Node.js"
+    exit 1
+  fi
+
+  if ! command -v yarn >/dev/null 2>&1; then
+    log_error "Yarn 未安装，请先安装 Yarn"
+    exit 1
+  fi
+}
+
+ensure_js_dependencies() {
+  ensure_node_toolchain
+
+  if [ -x "$NX_BIN" ]; then
+    return 0
+  fi
+
+  log_warn "检测到前端/Node 依赖未安装，正在自动执行 yarn install ..."
+  (
+    cd "$ROOT_DIR"
+    yarn install
+  )
+  log_success "依赖安装完成"
+}
+
+get_dashboard_port() {
+  echo "3000"
+}
+
+is_port_in_use() {
+  local port="$1"
+
+  if ! command -v lsof >/dev/null 2>&1; then
+    return 1
+  fi
+
+  lsof -tiTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+}
+
+ensure_port_available() {
+  local port="$1"
+  local service_name="$2"
+
+  if ! is_port_in_use "$port"; then
+    return 0
+  fi
+
+  local pid
+  pid="$(lsof -tiTCP:"$port" -sTCP:LISTEN | head -n 1 || true)"
+  if [ -n "$pid" ]; then
+    log_error "${service_name} 需要的端口 ${port} 已被占用（PID: ${pid}）。请先停止占用进程后重试。"
+  else
+    log_error "${service_name} 需要的端口 ${port} 已被占用，请先释放该端口后重试。"
+  fi
+  exit 1
+}
+
+wait_for_http_ready() {
+  local url="$1"
+  local label="$2"
+  local timeout_seconds="${3:-120}"
+  local watched_pid="${4:-}"
+
+  if ! command -v curl >/dev/null 2>&1; then
+    log_warn "未检测到 curl，跳过 ${label} 就绪探测。"
+    return 0
+  fi
+
+  local start_time
+  start_time="$(date +%s)"
+
+  while true; do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      log_success "${label} 已就绪: ${url}"
+      return 0
+    fi
+
+    if [ -n "$watched_pid" ] && ! kill -0 "$watched_pid" >/dev/null 2>&1; then
+      log_error "${label} 在就绪前已退出，请检查上方日志。"
+      return 1
+    fi
+
+    local now
+    now="$(date +%s)"
+    if [ $((now - start_time)) -ge "$timeout_seconds" ]; then
+      log_error "等待 ${label} 就绪超时（${timeout_seconds}s）: ${url}"
+      return 1
+    fi
+
+    sleep 1
+  done
+}
+
+wait_for_process_exit() {
+  local pid="$1"
+  local label="$2"
+
+  if ! kill -0 "$pid" >/dev/null 2>&1; then
+    log_error "${label} 提前退出，请检查上方日志。"
+    return 1
+  fi
+
+  return 0
 }
 
 detect_compose_cmd() {
@@ -237,6 +346,12 @@ run_doctor() {
     has_issue=true
   fi
 
+  if [ -x "$NX_BIN" ]; then
+    echo "  - node_modules: present"
+  else
+    echo "  - node_modules: missing (可由 yarn dev:full 自动安装)"
+  fi
+
   if [ -f "$API_ENV_FILE" ]; then
     echo "  - apps/api/.env: present"
   else
@@ -294,6 +409,7 @@ ensure_api_database() {
 }
 
 run_api() {
+  ensure_js_dependencies
   ensure_api_env
 
   # Export vars from apps/api/.env so Nx serve uses local dev settings.
@@ -349,6 +465,7 @@ run_api() {
 }
 
 run_dashboard() {
+  ensure_js_dependencies
   cd "$ROOT_DIR"
   export NX_TUI="false"
   export NX_DAEMON="false"
@@ -356,7 +473,16 @@ run_dashboard() {
 }
 
 run_full() {
+  ensure_js_dependencies
   start_services
+
+  local api_port
+  local dashboard_port
+  api_port="$(get_api_port)"
+  dashboard_port="$(get_dashboard_port)"
+
+  ensure_port_available "$api_port" "API"
+  ensure_port_available "$dashboard_port" "Dashboard"
 
   log_info "启动本机 API 与 Dashboard（Ctrl+C 结束）..."
 
@@ -365,18 +491,41 @@ run_full() {
     ./scripts/dev.sh api
   ) &
   local api_pid=$!
+  local dashboard_pid=""
+
+  cleanup() {
+    kill "$api_pid" >/dev/null 2>&1 || true
+    if [ -n "${dashboard_pid:-}" ]; then
+      kill "$dashboard_pid" >/dev/null 2>&1 || true
+    fi
+  }
+
+  trap cleanup INT TERM EXIT
+
+  if ! wait_for_process_exit "$api_pid" "API"; then
+    exit 1
+  fi
+
+  log_info "等待 API 就绪..."
+  if ! wait_for_http_ready "http://localhost:${api_port}/api/config" "API" 180 "$api_pid"; then
+    exit 1
+  fi
 
   (
     cd "$ROOT_DIR"
     ./scripts/dev.sh dashboard
   ) &
-  local dashboard_pid=$!
+  dashboard_pid=$!
 
-  cleanup() {
-    kill "$api_pid" "$dashboard_pid" >/dev/null 2>&1 || true
-  }
+  if ! wait_for_process_exit "$dashboard_pid" "Dashboard"; then
+    exit 1
+  fi
 
-  trap cleanup INT TERM EXIT
+  log_info "等待 Dashboard 就绪..."
+  if ! wait_for_http_ready "http://localhost:${dashboard_port}/" "Dashboard" 120 "$dashboard_pid"; then
+    exit 1
+  fi
+
   wait "$api_pid" "$dashboard_pid"
 }
 

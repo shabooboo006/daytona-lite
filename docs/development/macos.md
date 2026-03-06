@@ -77,6 +77,7 @@ yarn --version   # 应显示 4.x.x
 从 Docker 官网下载 **Apple Silicon** 版本的 Docker Desktop for Mac 并安装。
 
 安装完成后，在 Docker Desktop 设置中确认：
+
 - **Resources > Memory**: 建议分配 8GB+
 - **Resources > CPUs**: 建议分配 4+
 
@@ -119,6 +120,7 @@ yarn dev:dashboard
 ```
 
 访问地址：
+
 - Dashboard: `http://localhost:3000`
 - API: `http://localhost:3001`
 - Runner: `http://localhost:3003`
@@ -134,6 +136,13 @@ yarn dev:doctor
 yarn dev:status
 yarn dev:logs
 ```
+
+`yarn dev:full` 会自动处理以下事项：
+
+- 若 `node_modules` 缺失，会自动执行 `yarn install`。
+- 若 `apps/api/.env` 缺失，会从 `.env.example` 自动生成。
+- 会先等待 API 就绪，再启动 Dashboard，避免初次启动阶段的代理报错。
+- 会提前检查 `3000/3001` 端口占用情况，避免启动到一半才失败。
 
 ### 方案 B：全容器模式（完整集成验证）
 
@@ -158,6 +167,7 @@ flowchart TD
 ```
 
 Runner 需要：
+
 - **特权模式**（`--privileged`）：用于 Docker-in-Docker 启动 Sandbox 容器
 - **Linux 内核**：依赖 Linux 命名空间和 cgroup
 - **amd64 架构**（默认镜像）：多数 Sandbox 基础镜像为 amd64
@@ -246,6 +256,7 @@ docker buildx build \
 **Q: `yarn install` 报错找不到 node？**
 
 确认 fnm 已正确初始化：
+
 ```bash
 fnm use 22
 node --version
@@ -254,6 +265,7 @@ node --version
 **Q: 启动 API 时报数据库连接失败？**
 
 确认 Docker 容器正在运行：
+
 ```bash
 docker compose -f docker/docker-compose.dev.yml ps
 docker compose -f docker/docker-compose.dev.yml logs db
@@ -262,6 +274,7 @@ docker compose -f docker/docker-compose.dev.yml logs db
 **Q: Runner 容器无法启动？**
 
 检查 Docker Desktop 是否已启用特权模式支持，并查看日志：
+
 ```bash
 docker compose -f docker/docker-compose.dev.yml logs runner
 ```

@@ -273,6 +273,7 @@ api:
 ```
 
 生成随机密钥：
+
 ```bash
 # Admin 密码
 openssl rand -base64 24
@@ -394,14 +395,17 @@ yarn dev:doctor
 ```
 
 `yarn dev:full` 一键模式包含以下自动处理：
+
+- 若 `node_modules` 缺失，会自动执行 `yarn install`，适合新克隆仓库后的首次启动。
 - 自动读取 `apps/api/.env` 并将 `DEFAULT_RUNNER_API_KEY` 注入到开发容器，避免 Runner 与 API token 不一致。
 - 若 `.env` 中配置的数据库不存在（例如 `application_ctx`），会自动在本地 PostgreSQL 容器中创建。
 - 自动将不适合宿主机开发的地址做本地化兜底（如 `db/redis/minio/otel-collector`）。
 - 自动将镜像仓库地址规范到 `host.docker.internal:6000`，保证宿主机 API 与容器内 Runner 都可访问。
-
-首次启动时，Dashboard 可能短暂出现 `/api/config ECONNREFUSED`（API 仍在编译启动），通常会在 API 就绪后自动恢复。
+- 会先等待 API 就绪，再启动 Dashboard，避免首次启动时的 `/api/config ECONNREFUSED` 噪音。
+- 会在启动前检查 `3000/3001` 端口是否已被占用，提前给出明确提示。
 
 双模式说明：
+
 - 轻量模式（推荐）：`docker/docker-compose.dev.yml` + 本机 API/Dashboard 热更新
 - 全容器模式：`docker/docker-compose.yaml`（用于完整集成验证）
 
@@ -432,6 +436,7 @@ docker-compose logs -f proxy
 ### 常见问题
 
 **Q: Dashboard 登录失败（密码正确但报错）？**
+
 ```bash
 # 检查 API 是否正常启动
 curl http://localhost:3000/api/health
@@ -441,6 +446,7 @@ docker-compose exec api env | grep ADMIN_PASSWORD
 ```
 
 **Q: Sandbox 创建失败？**
+
 ```bash
 # 检查 runner 特权模式
 docker-compose exec runner docker info
@@ -453,6 +459,7 @@ docker-compose logs runner
 ```
 
 **Q: 无法通过 Proxy 访问 Sandbox 端口？**
+
 ```bash
 # 检查 proxy 服务
 curl http://localhost:4000/health
@@ -462,6 +469,7 @@ docker-compose exec proxy env | grep SERVER_IP
 ```
 
 **Q: API Key 认证失败？**
+
 ```bash
 # 验证 API Key
 curl -v http://localhost:3000/api/sandboxes \
@@ -472,6 +480,7 @@ docker-compose exec redis redis-cli ping
 ```
 
 **Q: 存储空间不足？**
+
 ```bash
 # 清理已停止的容器和镜像
 docker system prune -a
