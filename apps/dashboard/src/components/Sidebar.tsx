@@ -19,24 +19,20 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { DAYTONA_DOCS_URL, DAYTONA_SLACK_URL } from '@/constants/ExternalLinks'
 import { useTheme } from '@/contexts/ThemeContext'
 import { FeatureFlags } from '@/enums/FeatureFlags'
 import { RoutePath } from '@/enums/RoutePath'
-import { useConfig } from '@/hooks/useConfig'
 import { useSelectedOrganization } from '@/hooks/useSelectedOrganization'
 import { cn, getMetaKey } from '@/lib/utils'
 import { OrganizationRolePermissionsEnum, OrganizationUserRoleEnum } from '@daytonaio/api-client'
 import {
   ArrowRightIcon,
-  BookOpen,
   Box,
   ChevronsUpDown,
   Container,
   HardDrive,
   Joystick,
   KeyRound,
-  ListChecks,
   LockKeyhole,
   LogOut,
   MapPinned,
@@ -45,7 +41,6 @@ import {
   SearchIcon,
   Server,
   Settings,
-  Slack,
   SquareUserRound,
   Sun,
   Users,
@@ -93,7 +88,6 @@ const useNavCommands = (items: { label: string; path: RoutePath | string; onClic
 }
 
 export function Sidebar({ isBannerVisible, version }: SidebarProps) {
-  const config = useConfig()
   const { theme, setTheme } = useTheme()
   const { user, signoutRedirect } = useAuth()
   const { pathname } = useLocation()
@@ -163,10 +157,7 @@ export function Sidebar({ isBannerVisible, version }: SidebarProps) {
     }
 
     return arr
-  }, [
-    authenticatedUserOrganizationMember?.role,
-    selectedOrganization?.personal,
-  ])
+  }, [authenticatedUserOrganizationMember?.role, selectedOrganization?.personal])
 
   const infrastructureItems = useMemo(() => {
     if (!orgInfraEnabled) {
@@ -222,22 +213,7 @@ export function Sidebar({ isBannerVisible, version }: SidebarProps) {
     ].filter((group) => group.items.length > 0)
   }, [sidebarItems, settingsItems, infrastructureItems, miscItems])
 
-  const commandItems = useMemo(() => {
-    return sidebarGroups
-      .flatMap((group) => group.items)
-      .concat(
-        {
-          path: RoutePath.ACCOUNT_SETTINGS,
-          label: 'Account Settings',
-          icon: <Settings size={16} strokeWidth={1.5} />,
-        },
-        {
-          path: RoutePath.ONBOARDING,
-          label: 'Onboarding',
-          icon: <ListChecks size={16} strokeWidth={1.5} />,
-        },
-      )
-  }, [sidebarGroups])
+  const commandItems = useMemo(() => sidebarGroups.flatMap((group) => group.items), [sidebarGroups])
 
   const commandPaletteActions = useCommandPaletteActions()
 
@@ -326,22 +302,6 @@ export function Sidebar({ isBannerVisible, version }: SidebarProps) {
               <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          <SidebarMenuItem key="slack">
-            <SidebarMenuButton asChild tooltip="Slack">
-              <a href={DAYTONA_SLACK_URL} className=" h-8 py-0" target="_blank" rel="noopener noreferrer">
-                <Slack size={16} strokeWidth={1.5} />
-                <span>Slack</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem key="docs">
-            <SidebarMenuButton asChild tooltip="Docs">
-              <a href={DAYTONA_DOCS_URL} className=" h-8 py-0" target="_blank" rel="noopener noreferrer">
-                <BookOpen size={16} strokeWidth={1.5} />
-                <span>Docs</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -371,22 +331,6 @@ export function Sidebar({ isBannerVisible, version }: SidebarProps) {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-[--radix-popper-anchor-width] min-w-[12rem]">
-                <DropdownMenuItem asChild>
-                  <Button variant="ghost" className="w-full cursor-pointer justify-start" asChild>
-                    <Link to={RoutePath.ACCOUNT_SETTINGS}>
-                      <Settings className="w-4 h-4" />
-                      Account Settings
-                    </Link>
-                  </Button>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Button variant="ghost" className="w-full cursor-pointer justify-start" asChild>
-                    <Link to={RoutePath.ONBOARDING}>
-                      <ListChecks className="w-4 h-4" />
-                      Onboarding
-                    </Link>
-                  </Button>
-                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Button variant="ghost" className="w-full cursor-pointer justify-start" onClick={handleSignOut}>
                     <LogOut className="w-4 h-4" />
