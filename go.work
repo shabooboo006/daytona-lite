@@ -1,0 +1,11 @@
+go 1.25.4
+
+use (
+	./apps/daemon
+	./apps/proxy
+	./apps/runner
+	./apps/snapshot-manager
+	./apps/ssh-gateway
+	./libs/common-go
+	./libs/computer-use
+)
