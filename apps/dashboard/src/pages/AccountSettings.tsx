@@ -4,15 +4,10 @@
  */
 
 import { PageContent, PageHeader, PageLayout, PageTitle } from '@/components/PageLayout'
-import { PrivacyPreferencesDialog, usePrivacyConsent } from '@/components/PrivacyPreferencesDialog'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import React, { useState } from 'react'
+import React from 'react'
 
-const AccountSettings: React.FC<{ linkedAccountsEnabled: boolean }> = () => {
-  const { preferences, saveConsent } = usePrivacyConsent()
-  const [showPrivacyDialog, setShowPrivacyDialog] = useState(false)
-
+const AccountSettings: React.FC = () => {
   return (
     <PageLayout>
       <PageHeader>
@@ -23,27 +18,18 @@ const AccountSettings: React.FC<{ linkedAccountsEnabled: boolean }> = () => {
         <div className="flex flex-col gap-6">
           <Card>
             <CardContent>
-              <div className="flex sm:flex-row flex-col justify-between sm:items-center gap-2">
+              <div className="text-sm">
                 <div className="text-sm">
                   <div className="text-muted-foreground">
-                    <p className="font-semibold text-foreground">Privacy Preferences</p>
-                    Manage which tracking technologies are used for analytics and marketing.
+                    <p className="font-semibold text-foreground">No Additional Account Settings</p>
+                    This private deployment enables the available product telemetry by default and does not require
+                    end-user privacy consent prompts.
                   </div>
                 </div>
-                <Button variant="outline" onClick={() => setShowPrivacyDialog(true)}>
-                  Manage Preferences
-                </Button>
               </div>
             </CardContent>
           </Card>
         </div>
-
-        <PrivacyPreferencesDialog
-          open={showPrivacyDialog}
-          onOpenChange={setShowPrivacyDialog}
-          preferences={preferences}
-          onSave={saveConsent}
-        />
       </PageContent>
     </PageLayout>
   )

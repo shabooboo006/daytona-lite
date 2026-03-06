@@ -28,8 +28,7 @@ export const PostHogProviderWrapper: FC<PostHogProviderWrapperProps> = ({ childr
       apiKey={config.posthog.apiKey}
       options={{
         api_host: config.posthog.host,
-        opt_out_capturing_by_default: true,
-        cookieless_mode: 'on_reject',
+        opt_out_capturing_by_default: false,
         persistence: 'localStorage',
         person_profiles: 'always',
         autocapture: false,

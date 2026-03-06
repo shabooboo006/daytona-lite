@@ -18,7 +18,6 @@ import LoadingFallback from './components/LoadingFallback'
 import { DAYTONA_DOCS_URL, DAYTONA_SLACK_URL } from './constants/ExternalLinks'
 import { FeatureFlags } from './enums/FeatureFlags'
 import { RoutePath, getRouteSubPath } from './enums/RoutePath'
-import { useConfig } from './hooks/useConfig'
 import AccountSettings from './pages/AccountSettings'
 import Dashboard from './pages/Dashboard'
 import Keys from './pages/Keys'
@@ -55,7 +54,6 @@ const SlackRedirect = () => {
 }
 
 function App() {
-  const config = useConfig()
   const location = useLocation()
 
   return (
@@ -138,10 +136,7 @@ function App() {
             </RequiredFeatureFlagWrapper>
           }
         />
-        <Route
-          path={getRouteSubPath(RoutePath.ACCOUNT_SETTINGS)}
-          element={<AccountSettings linkedAccountsEnabled={config.linkedAccountsEnabled} />}
-        />
+        <Route path={getRouteSubPath(RoutePath.ACCOUNT_SETTINGS)} element={<AccountSettings />} />
         <Route path={getRouteSubPath(RoutePath.ONBOARDING)} element={<Onboarding />} />
         <Route path={getRouteSubPath(RoutePath.PLAYGROUND)} element={<Playground />} />
       </Route>
