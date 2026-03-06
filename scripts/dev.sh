@@ -296,6 +296,16 @@ stop_services() {
   log_success "开发基础设施已停止"
 }
 
+reset_services() {
+  ensure_runtime
+
+  log_warn "重置开发基础设施，将删除 docker-compose.dev.yml 对应 volumes ..."
+  compose_cmd down -v
+  log_success "开发基础设施 volumes 已删除"
+
+  start_services "$@"
+}
+
 restart_services() {
   stop_services
   start_services "$@"
@@ -538,6 +548,7 @@ Daytona Lite 本地开发脚本
 
 命令:
   start [--tools|--observability|--full]  启动开发基础设施
+  reset [--tools|--observability|--full]  删除开发 volumes 并重新初始化基础设施
   stop                                    停止开发基础设施
   restart [--tools|--observability|--full] 重启开发基础设施
   status                                  查看容器状态
@@ -550,6 +561,7 @@ Daytona Lite 本地开发脚本
 
 常用:
   yarn dev:start
+  yarn dev:reset
   yarn dev:api
   yarn dev:dashboard
   yarn dev:full
@@ -562,6 +574,9 @@ shift || true
 case "$CMD" in
   start)
     start_services "$@"
+    ;;
+  reset)
+    reset_services "$@"
     ;;
   stop)
     stop_services

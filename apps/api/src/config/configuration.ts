@@ -281,8 +281,8 @@ const configuration = {
     volumeQuota: parseInt(process.env.DEFAULT_ORG_QUOTA_VOLUME_QUOTA || '100', 10),
   },
   defaultRegion: {
-    id: process.env.DEFAULT_REGION_ID || 'us',
-    name: process.env.DEFAULT_REGION_NAME || 'us',
+    id: process.env.DEFAULT_REGION_ID || 'default',
+    name: process.env.DEFAULT_REGION_NAME || 'default',
     enforceQuotas: process.env.DEFAULT_REGION_ENFORCE_QUOTAS === 'true',
   },
   admin: {

@@ -31,6 +31,5 @@ export interface CreateOrganization {
      * @type {string}
      * @memberof CreateOrganization
      */
-    'defaultRegionId': string;
+    'defaultRegionId'?: string;
 }
-

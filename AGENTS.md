@@ -48,6 +48,7 @@ scripts/           本地开发辅助脚本
 ```bash
 yarn dev:doctor       # 检查本地开发环境
 yarn dev:start        # 启动开发依赖（Postgres / Redis / MinIO / Registry）
+yarn dev:reset        # 删除开发 volumes 并从头初始化开发依赖
 yarn dev:api          # 本机启动 API（热重载）
 yarn dev:dashboard    # 本机启动 Dashboard
 yarn dev:full         # 一键启动开发环境

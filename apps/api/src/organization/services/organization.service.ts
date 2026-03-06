@@ -381,6 +381,8 @@ export class OrganizationService implements OnModuleInit, TrackableJobExecutions
     quota: CreateOrganizationQuotaDto = this.defaultOrganizationQuota,
     sandboxLimitedNetworkEgress: boolean = this.defaultSandboxLimitedNetworkEgress,
   ): Promise<Organization> {
+    const defaultRegionId = createOrganizationDto.defaultRegionId ?? this.configService.getOrThrow('defaultRegion.id')
+
     if (personal) {
       const count = await entityManager.count(Organization, {
         where: { createdBy, personal: true },
@@ -398,7 +400,7 @@ export class OrganizationService implements OnModuleInit, TrackableJobExecutions
       throw new ForbiddenException('You have reached the maximum number of created organizations')
     }
 
-    let organization = new Organization(createOrganizationDto.defaultRegionId)
+    let organization = new Organization(defaultRegionId)
 
     organization.name = createOrganizationDto.name
     organization.createdBy = createdBy
@@ -429,19 +431,17 @@ export class OrganizationService implements OnModuleInit, TrackableJobExecutions
 
     organization.users = [owner]
 
-    if (createOrganizationDto.defaultRegionId) {
-      const defaultRegion = await this.validateOrganizationDefaultRegion(createOrganizationDto.defaultRegionId)
+    const defaultRegion = await this.validateOrganizationDefaultRegion(defaultRegionId)
 
-      if (defaultRegion.enforceQuotas) {
-        const regionQuota = new RegionQuota(
-          organization.id,
-          createOrganizationDto.defaultRegionId,
-          quota.totalCpuQuota,
-          quota.totalMemoryQuota,
-          quota.totalDiskQuota,
-        )
-        organization.regionQuotas = [regionQuota]
-      }
+    if (defaultRegion.enforceQuotas) {
+      const regionQuota = new RegionQuota(
+        organization.id,
+        defaultRegionId,
+        quota.totalCpuQuota,
+        quota.totalMemoryQuota,
+        quota.totalDiskQuota,
+      )
+      organization.regionQuotas = [regionQuota]
     }
 
     await entityManager.transaction(async (em) => {

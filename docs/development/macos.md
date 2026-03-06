@@ -131,6 +131,9 @@ yarn dev:dashboard
 # 一键启动基础设施 + API + Dashboard
 yarn dev:full
 
+# 删除开发 volumes 并从头重建基础设施
+yarn dev:reset
+
 # 环境诊断 / 状态 / 日志
 yarn dev:doctor
 yarn dev:status
@@ -143,6 +146,8 @@ yarn dev:logs
 - 若 `apps/api/.env` 缺失，会从 `.env.example` 自动生成。
 - 会先等待 API 就绪，再启动 Dashboard，避免初次启动阶段的代理报错。
 - 会提前检查 `3000/3001` 端口占用情况，避免启动到一半才失败。
+
+`yarn dev:reset` 会删除 `docker/docker-compose.dev.yml` 对应的开发 volumes 并重新初始化依赖服务。需要刷新默认初始化数据时，优先使用该命令。
 
 ### 方案 B：全容器模式（完整集成验证）
 

@@ -20,6 +20,7 @@
     "serve:production": "nx run-many --target=serve --all --exclude=daemon --parallel=$(getconf _NPROCESSORS_ONLN) --configuration=production",
     "dev:start": "./scripts/dev.sh start",
     "dev:start:full": "./scripts/dev.sh start --full",
+    "dev:reset": "./scripts/dev.sh reset",
     "dev:stop": "./scripts/dev.sh stop",
     "dev:restart": "./scripts/dev.sh restart",
     "dev:status": "./scripts/dev.sh status",

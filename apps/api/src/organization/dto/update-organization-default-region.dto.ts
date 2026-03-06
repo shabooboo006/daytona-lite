@@ -10,7 +10,7 @@ import { IsNotEmpty, IsString } from 'class-validator'
 export class UpdateOrganizationDefaultRegionDto {
   @ApiProperty({
     description: 'The ID of the default region for the organization',
-    example: 'us',
+    example: 'default',
     required: true,
   })
   @IsString()

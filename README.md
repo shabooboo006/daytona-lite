@@ -370,6 +370,9 @@ yarn install
 # 2. 启动开发基础设施（db/redis/minio/registry/runner）
 yarn dev:start
 
+# 如需从头初始化默认数据（例如拿到新的 default region）
+yarn dev:reset
+
 # 3. 启动 API（热重载）
 yarn dev:api
 
@@ -382,6 +385,9 @@ yarn dev:dashboard
 ```bash
 # 一键启动基础设施 + API + Dashboard
 yarn dev:full
+
+# 删除开发 volumes 并从头重建基础设施
+yarn dev:reset
 
 # 查看容器状态/日志
 yarn dev:status
@@ -403,6 +409,8 @@ yarn dev:doctor
 - 自动将镜像仓库地址规范到 `host.docker.internal:6000`，保证宿主机 API 与容器内 Runner 都可访问。
 - 会先等待 API 就绪，再启动 Dashboard，避免首次启动时的 `/api/config ECONNREFUSED` 噪音。
 - 会在启动前检查 `3000/3001` 端口是否已被占用，提前给出明确提示。
+
+`yarn dev:reset` 用于删除 `docker/docker-compose.dev.yml` 对应的开发 volumes 并重新初始化依赖服务。需要拿到新的默认初始化数据时，优先使用该命令，而不是保留旧 volumes 直接重启。
 
 双模式说明：
 
