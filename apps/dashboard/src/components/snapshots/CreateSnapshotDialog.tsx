@@ -17,13 +17,10 @@ import {
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { useCreateSnapshotMutation } from '@/hooks/mutations/useCreateSnapshotMutation'
-import { useRegions } from '@/hooks/useRegions'
 import { useSelectedOrganization } from '@/hooks/useSelectedOrganization'
 import { handleApiError } from '@/lib/error-handling'
-import { getRegionFullDisplayName } from '@/lib/utils'
 import { useForm } from '@tanstack/react-form'
 import { Plus } from 'lucide-react'
 import { Ref, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
@@ -56,7 +53,6 @@ const formSchema = z.object({
   cpu: z.number().min(1).optional(),
   memory: z.number().min(1).optional(),
   disk: z.number().min(1).optional(),
-  regionId: z.string().optional(),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -68,13 +64,11 @@ const defaultValues: FormValues = {
   cpu: undefined,
   memory: undefined,
   disk: undefined,
-  regionId: undefined,
 }
 
 export const CreateSnapshotDialog = ({ className, ref }: { className?: string; ref?: Ref<{ open: () => void }> }) => {
   const [open, setOpen] = useState(false)
 
-  const { availableRegions: regions, loadingAvailableRegions: loadingRegions } = useRegions()
   const { selectedOrganization } = useSelectedOrganization()
   const { reset: resetCreateSnapshotMutation, ...createSnapshotMutation } = useCreateSnapshotMutation()
   const formRef = useRef<HTMLFormElement>(null)
@@ -114,7 +108,6 @@ export const CreateSnapshotDialog = ({ className, ref }: { className?: string; r
             cpu: value.cpu,
             memory: value.memory,
             disk: value.disk,
-            regionId: value.regionId,
           },
           organizationId: selectedOrganization.id,
         })
@@ -221,29 +214,14 @@ export const CreateSnapshotDialog = ({ className, ref }: { className?: string; r
               }}
             </form.Field>
 
-            <form.Field name="regionId">
-              {(field) => (
-                <Field>
-                  <FieldLabel htmlFor={field.name}>Region</FieldLabel>
-                  <Select value={field.state.value} onValueChange={field.handleChange}>
-                    <SelectTrigger className="h-8" id={field.name} disabled={loadingRegions} loading={loadingRegions}>
-                      <SelectValue placeholder={loadingRegions ? 'Loading regions...' : 'Select a region'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {regions.map((region) => (
-                        <SelectItem key={region.id} value={region.id}>
-                          {getRegionFullDisplayName(region)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FieldDescription>
-                    The region where the snapshot will be available. If not specified, your organization's default
-                    region will be used.
-                  </FieldDescription>
-                </Field>
-              )}
-            </form.Field>
+            <Field>
+              <FieldLabel>Region</FieldLabel>
+              <Input value={selectedOrganization?.defaultRegionId ?? 'default'} readOnly />
+              <FieldDescription>
+                Snapshots are created in your organization&apos;s default region automatically. No manual region
+                selection is required.
+              </FieldDescription>
+            </Field>
 
             <div className="flex flex-col gap-2">
               <Label className="text-sm font-medium">Resources</Label>

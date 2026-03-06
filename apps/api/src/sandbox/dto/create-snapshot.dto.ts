@@ -88,7 +88,8 @@ export class CreateSnapshotDto {
 
   @ApiPropertyOptional({
     description:
-      'ID of the region where the snapshot will be available. Defaults to organization default region if not specified.',
+      'ID of the region where the snapshot will be available. Defaults to the organization default region (`default` by default) if not specified.',
+    example: 'default',
   })
   @IsOptional()
   @IsString()

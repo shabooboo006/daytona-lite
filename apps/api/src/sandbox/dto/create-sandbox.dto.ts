@@ -89,8 +89,9 @@ export class CreateSandboxDto {
   class?: SandboxClass
 
   @ApiPropertyOptional({
-    description: 'The target (region) where the sandbox will be created',
-    example: 'us',
+    description:
+      'The target (region) where the sandbox will be created. Defaults to the organization default region (`default` by default) when omitted.',
+    example: 'default',
   })
   @IsOptional()
   @IsString()
