@@ -5,12 +5,10 @@
 
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { PageContent, PageHeader, PageLayout, PageTitle } from '@/components/PageLayout'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { UsageOverview, UsageOverviewSkeleton } from '@/components/UsageOverview'
-import { RoutePath } from '@/enums/RoutePath'
 import { useOrganizationUsageOverviewQuery } from '@/hooks/queries/useOrganizationUsageOverviewQuery'
 import { useConfig } from '@/hooks/useConfig'
 import { useRegions } from '@/hooks/useRegions'
@@ -20,7 +18,6 @@ import type { RegionUsageOverview } from '@daytonaio/api-client'
 import { keepPreviousData } from '@tanstack/react-query'
 import { RefreshCcw } from 'lucide-react'
 import { ReactNode, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 export default function Limits() {
   const { selectedOrganization } = useSelectedOrganization()
@@ -28,13 +25,6 @@ export default function Limits() {
   const { getRegionName } = useRegions()
   const [selectedRegionId, setSelectedRegionId] = useState<string | undefined>(undefined)
   const config = useConfig()
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    if (selectedOrganization && !selectedOrganization.defaultRegionId) {
-      navigate(RoutePath.SETTINGS)
-    }
-  }, [navigate, selectedOrganization])
 
   const { data: usageOverview, ...usageOverviewQuery } = useOrganizationUsageOverviewQuery(
     {
@@ -94,9 +84,7 @@ export default function Limits() {
             <CardHeader className="p-4">
               <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
                 <CardTitle className="flex justify-between gap-x-4 gap-y-2 flex-row flex-wrap items-center">
-                  <div className="flex items-center gap-2">
-                    Current Usage
-                  </div>
+                  <div className="flex items-center gap-2">Current Usage</div>
                 </CardTitle>
                 {usageOverview && usageOverview.regionUsage.length > 0 && (
                   <div className="flex items-center gap-2">
@@ -105,13 +93,13 @@ export default function Limits() {
                       <SelectTrigger
                         size="xs"
                         disabled={usageOverview.regionUsage.length === 1}
-                        className={`uppercase w-auto min-w-12 max-w-48 gap-x-2 ${usageOverview.regionUsage.length === 1 ? 'pointer-events-none select-none [&>svg]:hidden min-w-10 disabled:opacity-100' : ''}`}
+                        className={`w-auto min-w-12 max-w-48 gap-x-2 ${usageOverview.regionUsage.length === 1 ? 'pointer-events-none select-none [&>svg]:hidden min-w-10 disabled:opacity-100' : ''}`}
                       >
                         <SelectValue placeholder="Select region" />
                       </SelectTrigger>
                       <SelectContent className="min-w-24 max-w-48" align="end">
                         {usageOverview.regionUsage.map((usage) => (
-                          <SelectItem key={usage.regionId} value={usage.regionId} className="uppercase">
+                          <SelectItem key={usage.regionId} value={usage.regionId}>
                             {getRegionName(usage.regionId) ?? usage.regionId}
                           </SelectItem>
                         ))}

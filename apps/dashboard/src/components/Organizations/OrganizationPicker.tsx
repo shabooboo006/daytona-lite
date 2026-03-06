@@ -13,7 +13,6 @@ import {
 import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
 import { useApi } from '@/hooks/useApi'
 import { useOrganizations } from '@/hooks/useOrganizations'
-import { useRegions } from '@/hooks/useRegions'
 import { useSelectedOrganization } from '@/hooks/useSelectedOrganization'
 import { handleApiError } from '@/lib/error-handling'
 import { Organization } from '@daytonaio/api-client'
@@ -71,7 +70,6 @@ export const OrganizationPicker: React.FC = () => {
 
   const { organizations, refreshOrganizations } = useOrganizations()
   const { selectedOrganization, onSelectOrganization } = useSelectedOrganization()
-  const { sharedRegions: regions, loadingSharedRegions: loadingRegions, getRegionName } = useRegions()
 
   const [optimisticSelectedOrganization, setOptimisticSelectedOrganization] = useState(selectedOrganization)
   const [loadingSelectOrganization, setLoadingSelectOrganization] = useState(false)
@@ -99,14 +97,9 @@ export const OrganizationPicker: React.FC = () => {
 
   const [showCreateOrganizationDialog, setShowCreateOrganizationDialog] = useState(false)
 
-  const handleCreateOrganization = async (name: string, defaultRegionId: string) => {
+  const handleCreateOrganization = async (name: string) => {
     try {
-      const organization = (
-        await organizationsApi.createOrganization({
-          name: name.trim(),
-          defaultRegionId,
-        })
-      ).data
+      const organization = (await organizationsApi.createOrganization({ name: name.trim() })).data
       toast.success('Organization created successfully')
       await refreshOrganizations(organization.id)
       return organization
@@ -185,9 +178,6 @@ export const OrganizationPicker: React.FC = () => {
       <CreateOrganizationDialog
         open={showCreateOrganizationDialog}
         onOpenChange={setShowCreateOrganizationDialog}
-        regions={regions}
-        loadingRegions={loadingRegions}
-        getRegionName={getRegionName}
         onCreateOrganization={handleCreateOrganization}
       />
     </SidebarMenuItem>
