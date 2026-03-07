@@ -50,8 +50,16 @@ import { RegionService } from '../../region/services/region.service'
 import { TypedConfigService } from '../../config/typed-config.service'
 import { SandboxRepository } from '../repositories/sandbox.repository'
 import { SnapshotActivatedEvent } from '../events/snapshot-activated.event'
+import { InjectRedis } from '@nestjs-modules/ioredis'
+import Redis from 'ioredis'
+import { AggregatedLocalImageDto } from '../dto/local-image.dto'
+import { SnapshotSourceType } from '../enums/snapshot-source-type.enum'
+import { SnapshotStorageMode } from '../enums/snapshot-storage-mode.enum'
+import { LocalImage, RunnerAdapterFactory } from '../runner-adapter/runnerAdapter'
+import { Runner } from '../entities/runner.entity'
 
 const IMAGE_NAME_REGEX = /^[a-zA-Z0-9_.\-:]+(\/[a-zA-Z0-9_.\-:]+)*(@sha256:[a-f0-9]{64})?$/
+const LOCAL_IMAGE_CACHE_TTL_SECONDS = 30
 @Injectable()
 export class SnapshotService {
   private readonly logger = new Logger(SnapshotService.name)
@@ -74,8 +82,11 @@ export class SnapshotService {
     private readonly runnerService: RunnerService,
     private readonly regionService: RegionService,
     private readonly dockerRegistryService: DockerRegistryService,
+    private readonly runnerAdapterFactory: RunnerAdapterFactory,
     private readonly eventEmitter: EventEmitter2,
     private readonly configService: TypedConfigService,
+    @InjectRedis()
+    private readonly redis: Redis,
   ) {}
 
   private validateImageName(name: string): string | null {
@@ -150,9 +161,6 @@ export class SnapshotService {
 
     try {
       const entrypoint = createSnapshotDto.entrypoint
-      const ref: string | undefined = undefined
-      const state: SnapshotState = SnapshotState.PENDING
-
       const nameValidationError = this.validateSnapshotName(createSnapshotDto.name)
       if (nameValidationError) {
         throw new BadRequestException(nameValidationError)
@@ -179,6 +187,45 @@ export class SnapshotService {
         pendingSnapshotCountIncrement = newSnapshotCount
       }
 
+      if (this.configService.get('localImageMode')) {
+        const localImage = await this.findLocalImageByName(regionId, createSnapshotDto.imageName)
+        if (localImage) {
+          const snapshotId = uuidv4()
+          const snapshot = this.snapshotRepository.create({
+            id: snapshotId,
+            organizationId: organization.id,
+            ...createSnapshotDto,
+            entrypoint: this.processEntrypoint(entrypoint) ?? localImage.entrypoint,
+            mem: createSnapshotDto.memory,
+            state: SnapshotState.ACTIVE,
+            ref: createSnapshotDto.imageName,
+            general,
+            sourceType: SnapshotSourceType.LOCAL_IMAGE,
+            storageMode: SnapshotStorageMode.LOCAL_ONLY,
+            lastUsedAt: new Date(),
+            snapshotRegions: [{ snapshotId, regionId }],
+          })
+
+          const savedSnapshot = await this.snapshotRepository.save(snapshot)
+          for (const runnerId of localImage.runnerIds) {
+            await this.runnerService.createSnapshotRunnerEntry(runnerId, savedSnapshot.ref, SnapshotRunnerState.READY)
+          }
+
+          this.eventEmitter.emit(SnapshotEvents.CREATED, new SnapshotCreatedEvent(savedSnapshot))
+          return savedSnapshot
+        }
+      }
+
+      const fallbackRegistry = this.configService.get('registryFallbackEnabled')
+        ? await this.dockerRegistryService.findRegistryByImageName(createSnapshotDto.imageName, regionId, organization.id)
+        : null
+
+      if (!fallbackRegistry) {
+        throw new BadRequestException(
+          `Image ${createSnapshotDto.imageName} is not available on any ready runner in region ${regionId} and no registry fallback is configured`,
+        )
+      }
+
       try {
         const snapshotId = uuidv4()
 
@@ -188,9 +235,11 @@ export class SnapshotService {
           ...createSnapshotDto,
           entrypoint: this.processEntrypoint(entrypoint),
           mem: createSnapshotDto.memory, // Map memory to mem
-          state,
-          ref,
+          state: SnapshotState.PENDING,
+          ref: undefined,
           general,
+          sourceType: SnapshotSourceType.REGISTRY_IMAGE,
+          storageMode: SnapshotStorageMode.REGISTRY,
           snapshotRegions: [{ snapshotId, regionId }],
         })
 
@@ -250,6 +299,13 @@ export class SnapshotService {
 
       const snapshotId = uuidv4()
 
+      const buildSnapshotRef = generateBuildSnapshotRef(
+        createSnapshotDto.buildInfo.dockerfileContent,
+        createSnapshotDto.buildInfo.contextHashes,
+      )
+
+      const internalRegistry = await this.dockerRegistryService.getAvailableInternalRegistry(regionId)
+      const storageMode = internalRegistry ? SnapshotStorageMode.REGISTRY : SnapshotStorageMode.LOCAL_ONLY
       const snapshot = this.snapshotRepository.create({
         id: snapshotId,
         organizationId: organization.id,
@@ -258,13 +314,14 @@ export class SnapshotService {
         mem: createSnapshotDto.memory, // Map memory to mem
         state: SnapshotState.PENDING,
         general,
+        ref:
+          storageMode === SnapshotStorageMode.REGISTRY
+            ? `${internalRegistry.url.replace(/^(https?:\/\/)/, '')}/${internalRegistry.project || 'daytona'}/${buildSnapshotRef}`
+            : buildSnapshotRef,
+        sourceType: SnapshotSourceType.BUILD,
+        storageMode,
         snapshotRegions: [{ snapshotId, regionId }],
       })
-
-      const buildSnapshotRef = generateBuildSnapshotRef(
-        createSnapshotDto.buildInfo.dockerfileContent,
-        createSnapshotDto.buildInfo.contextHashes,
-      )
 
       // Check if buildInfo with the same snapshotRef already exists
       const existingBuildInfo = await this.buildInfoRepository.findOne({
@@ -285,12 +342,6 @@ export class SnapshotService {
         await this.buildInfoRepository.save(buildInfoEntity)
         snapshot.buildInfo = buildInfoEntity
       }
-
-      const internalRegistry = await this.dockerRegistryService.getAvailableInternalRegistry(regionId)
-      if (!internalRegistry) {
-        throw new Error('No internal registry found for snapshot')
-      }
-      snapshot.ref = `${internalRegistry.url.replace(/^(https?:\/\/)/, '')}/${internalRegistry.project || 'daytona'}/${buildSnapshotRef}`
 
       const exists = await this.readySnapshotRunnerExists(snapshot.ref, regionId)
 
@@ -596,7 +647,7 @@ export class SnapshotService {
       },
     })
 
-    if (snapshot) {
+    if (snapshot && snapshot.storageMode !== SnapshotStorageMode.LOCAL_ONLY) {
       return false
     }
 
@@ -645,7 +696,7 @@ export class SnapshotService {
         },
       })
 
-      if (countActiveSnapshots === 0) {
+      if (countActiveSnapshots === 0 && snapshot.storageMode !== SnapshotStorageMode.LOCAL_ONLY) {
         // Set associated SnapshotRunner records to REMOVING state
         const result = await this.snapshotRunnerRepository.update(
           { snapshotRef: snapshot.ref },
@@ -763,5 +814,147 @@ export class SnapshotService {
       { runnerId: payload.runnerId },
       { state: SnapshotRunnerState.REMOVING },
     )
+  }
+
+  async listLocalImages(
+    organization: Organization,
+    regionId?: string,
+    query?: string,
+    refresh = false,
+  ): Promise<AggregatedLocalImageDto[]> {
+    if (!this.configService.get('localImageScanEnabled')) {
+      return []
+    }
+
+    const resolvedRegionId = await this.getValidatedOrDefaultRegionId(organization, regionId)
+    const cacheKey = `local-images:${organization.id}:${resolvedRegionId}:${query || ''}`
+    if (!refresh) {
+      const cached = await this.redis.get(cacheKey)
+      if (cached) {
+        return JSON.parse(cached) as AggregatedLocalImageDto[]
+      }
+    }
+
+    const runners = await this.getReadyRunnersForRegion(resolvedRegionId)
+    const aggregated = new Map<string, AggregatedLocalImageDto>()
+
+    await Promise.all(
+      runners.map(async (runner) => {
+        try {
+          const runnerAdapter = await this.runnerAdapterFactory.create(runner)
+          const images = await runnerAdapter.listLocalImages(query)
+          this.aggregateLocalImages(aggregated, images, runner.id)
+        } catch (error) {
+          this.logger.warn(
+            `Failed to list local images for runner ${runner.id}: ${error instanceof Error ? error.message : String(error)}`,
+          )
+        }
+      }),
+    )
+
+    const result = Array.from(aggregated.values()).sort((a, b) => a.imageName.localeCompare(b.imageName))
+    await this.redis.set(cacheKey, JSON.stringify(result), 'EX', LOCAL_IMAGE_CACHE_TTL_SECONDS)
+    return result
+  }
+
+  async refreshLocalSnapshotRunners(snapshot: Snapshot, regionId: string): Promise<string[]> {
+    if (snapshot.storageMode !== SnapshotStorageMode.LOCAL_ONLY || !snapshot.ref) {
+      return []
+    }
+
+    const localImage = await this.findLocalImageByName(regionId, snapshot.ref)
+    const runnerIds = localImage?.runnerIds ?? []
+    const existingEntries = await this.snapshotRunnerRepository.find({
+      where: {
+        snapshotRef: snapshot.ref,
+      },
+    })
+
+    const existingRunnerIds = new Set(existingEntries.map((entry) => entry.runnerId))
+    for (const runnerId of runnerIds) {
+      if (!existingRunnerIds.has(runnerId)) {
+        await this.runnerService.createSnapshotRunnerEntry(runnerId, snapshot.ref, SnapshotRunnerState.READY)
+      }
+    }
+
+    const staleEntryIds = existingEntries.filter((entry) => !runnerIds.includes(entry.runnerId)).map((entry) => entry.id)
+    if (staleEntryIds.length > 0) {
+      await this.snapshotRunnerRepository.delete(staleEntryIds)
+    }
+
+    return runnerIds
+  }
+
+  private async findLocalImageByName(
+    regionId: string,
+    imageName: string,
+  ): Promise<AggregatedLocalImageDto | undefined> {
+    const runners = await this.getReadyRunnersForRegion(regionId)
+    const aggregated = new Map<string, AggregatedLocalImageDto>()
+
+    await Promise.all(
+      runners.map(async (runner) => {
+        try {
+          const runnerAdapter = await this.runnerAdapterFactory.create(runner)
+          const images = await runnerAdapter.listLocalImages(imageName)
+          this.aggregateLocalImages(aggregated, images, runner.id)
+        } catch (error) {
+          this.logger.warn(
+            `Failed to list local images for runner ${runner.id}: ${error instanceof Error ? error.message : String(error)}`,
+          )
+        }
+      }),
+    )
+
+    const matches = Array.from(aggregated.values()).find(
+      (image) =>
+        image.imageName === imageName ||
+        image.repoTags?.includes(imageName) ||
+        image.repoDigests?.includes(imageName),
+    )
+
+    return matches
+  }
+
+  private aggregateLocalImages(
+    aggregated: Map<string, AggregatedLocalImageDto>,
+    images: LocalImage[],
+    runnerId: string,
+  ): void {
+    for (const image of images) {
+      const refs = [...(image.repoTags || []), ...(image.repoDigests || [])]
+      const imageRefs = refs.length > 0 ? refs : [image.imageName]
+
+      for (const ref of imageRefs) {
+        const existing = aggregated.get(ref)
+        if (existing) {
+          if (!existing.runnerIds.includes(runnerId)) {
+            existing.runnerIds.push(runnerId)
+            existing.runnerCount = existing.runnerIds.length
+          }
+          continue
+        }
+
+        aggregated.set(ref, {
+          imageName: ref,
+          repoTags: image.repoTags,
+          repoDigests: image.repoDigests,
+          sizeGB: image.sizeGB,
+          entrypoint: image.entrypoint,
+          cmd: image.cmd,
+          runnerIds: [runnerId],
+          runnerCount: 1,
+        })
+      }
+    }
+  }
+
+  private async getReadyRunnersForRegion(regionId: string): Promise<Runner[]> {
+    const runners = await this.runnerService.findAllByRegion(regionId)
+    const readyRunnerIds = runners
+      .filter((runner) => runner.state === RunnerState.READY && !runner.unschedulable)
+      .map((runner) => runner.id)
+
+    return this.runnerService.findByIds(readyRunnerIds)
   }
 }

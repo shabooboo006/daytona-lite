@@ -3,25 +3,16 @@
 
 package dto
 
-type PullSnapshotRequestDTO struct {
-	Snapshot            string       `json:"snapshot" validate:"required"`
-	Registry            *RegistryDTO `json:"registry,omitempty"`
-	DestinationRegistry *RegistryDTO `json:"destinationRegistry,omitempty"`
-	DestinationRef      *string      `json:"destinationRef,omitempty"`
-	NewTag              *string      `json:"newTag,omitempty"`
-} //	@name	PullSnapshotRequestDTO
-
-type BuildSnapshotRequestDTO struct {
-	Snapshot               string        `json:"snapshot,omitempty"` // Snapshot ID and tag or the build's hash
-	SourceRegistries       []RegistryDTO `json:"sourceRegistries,omitempty"`
-	Registry               *RegistryDTO  `json:"registry,omitempty"`
-	Dockerfile             string        `json:"dockerfile" validate:"required"`
-	OrganizationId         string        `json:"organizationId" validate:"required"`
-	Context                []string      `json:"context"`
-	PushToInternalRegistry bool          `json:"pushToInternalRegistry"`
-} //	@name	BuildSnapshotRequestDTO
+type LocalImageDTO struct {
+	ImageName   string   `json:"imageName" example:"ubuntu:22.04"`
+	RepoTags    []string `json:"repoTags,omitempty" example:"[\"ubuntu:22.04\"]"`
+	RepoDigests []string `json:"repoDigests,omitempty" example:"[\"ubuntu@sha256:abc\"]"`
+	SizeGB      float64  `json:"sizeGB" example:"0.13"`
+	Entrypoint  []string `json:"entrypoint,omitempty" example:"[\"bash\"]"`
+	Cmd         []string `json:"cmd,omitempty" example:"[\"-lc\",\"sleep infinity\"]"`
+} // @name LocalImageDTO
 
 type TagImageRequestDTO struct {
-	SourceImage string `json:"sourceImage" validate:"required"`
-	TargetImage string `json:"targetImage" validate:"required"`
-} //	@name	TagImageRequestDTO
+	SourceImage string `json:"sourceImage" binding:"required" example:"ubuntu:22.04"`
+	TargetImage string `json:"targetImage" binding:"required" example:"registry.local/ubuntu:dev"`
+} // @name TagImageRequestDTO

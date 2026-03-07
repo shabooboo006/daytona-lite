@@ -7,4 +7,8 @@ import { DaytonaConfiguration } from '@daytonaio/api-client'
 
 export type DashboardConfig = DaytonaConfiguration & {
   apiUrl: string
+  localImageMode?: boolean
+  localImageScanEnabled?: boolean
+  registryFallbackEnabled?: boolean
+  autoRegisterLocalRunner?: boolean
 }

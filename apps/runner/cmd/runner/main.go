@@ -112,6 +112,12 @@ func run() int {
 		return 2
 	}
 
+	dockerInfo, err := cli.Info(ctx)
+	if err != nil {
+		logger.Error("Error getting Docker info", "error", err)
+		return 2
+	}
+
 	// Initialize net rules manager
 	persistent := cfg.Environment != "development"
 	netRulesManager, err := netrules.NewNetRulesManager(logger, persistent)
@@ -127,7 +133,13 @@ func run() int {
 	}
 	defer netRulesManager.Stop()
 
-	daemonPath, err := daemon.WriteStaticBinary("daemon-amd64")
+	daemonBinaryName, err := daemon.BinaryNameForDockerArchitecture(dockerInfo.Architecture)
+	if err != nil {
+		logger.Error("Error resolving daemon binary", "error", err)
+		return 2
+	}
+
+	daemonPath, err := daemon.WriteStaticBinary(daemonBinaryName)
 	if err != nil {
 		logger.Error("Error writing daemon binary", "error", err)
 		return 2
@@ -229,14 +241,13 @@ func run() int {
 
 	if cfg.ApiVersion == 2 {
 		healthcheckService, err := healthcheck.NewService(&healthcheck.HealthcheckServiceConfig{
-			Interval:   cfg.HealthcheckInterval,
-			Timeout:    cfg.HealthcheckTimeout,
-			Collector:  metricsCollector,
-			Logger:     logger,
-			Domain:     cfg.Domain,
-			ApiPort:    cfg.ApiPort,
-			ProxyPort:  cfg.ApiPort,
-			TlsEnabled: cfg.EnableTLS,
+			Interval:  cfg.HealthcheckInterval,
+			Timeout:   cfg.HealthcheckTimeout,
+			Collector: metricsCollector,
+			Logger:    logger,
+			Domain:    cfg.GetAdvertiseDomain(),
+			ApiUrl:    cfg.GetAdvertiseApiUrl(),
+			ProxyUrl:  cfg.GetAdvertiseProxyUrl(),
 		})
 		if err != nil {
 			logger.Error("Failed to create healthcheck service", "error", err)

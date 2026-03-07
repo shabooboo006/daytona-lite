@@ -154,6 +154,34 @@ export class ConfigurationDto {
   defaultSnapshot: string
 
   @ApiProperty({
+    description: 'Whether local image mode is enabled',
+    example: true,
+  })
+  @IsBoolean()
+  localImageMode: boolean
+
+  @ApiProperty({
+    description: 'Whether local image scanning is enabled',
+    example: true,
+  })
+  @IsBoolean()
+  localImageScanEnabled: boolean
+
+  @ApiProperty({
+    description: 'Whether registry fallback is enabled',
+    example: true,
+  })
+  @IsBoolean()
+  registryFallbackEnabled: boolean
+
+  @ApiProperty({
+    description: 'Whether local runner auto-registration is enabled',
+    example: true,
+  })
+  @IsBoolean()
+  autoRegisterLocalRunner: boolean
+
+  @ApiProperty({
     description: 'Dashboard URL',
     example: 'https://dashboard.example.com',
   })
@@ -227,6 +255,10 @@ export class ConfigurationDto {
     this.proxyTemplateUrl = configService.getOrThrow('proxy.templateUrl')
     this.proxyToolboxUrl = configService.getOrThrow('proxy.toolboxUrl')
     this.defaultSnapshot = configService.getOrThrow('defaultSnapshot')
+    this.localImageMode = configService.getOrThrow('localImageMode')
+    this.localImageScanEnabled = configService.getOrThrow('localImageScanEnabled')
+    this.registryFallbackEnabled = configService.getOrThrow('registryFallbackEnabled')
+    this.autoRegisterLocalRunner = configService.getOrThrow('autoRegisterLocalRunner')
     this.dashboardUrl = configService.getOrThrow('dashboardUrl')
     this.maxAutoArchiveInterval = configService.getOrThrow('maxAutoArchiveInterval')
     this.maintananceMode = configService.getOrThrow('maintananceMode')

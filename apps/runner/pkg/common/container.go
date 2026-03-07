@@ -22,5 +22,11 @@ func GetContainerIpAddress(ctx context.Context, container *container.InspectResp
 		return networkSettings.IPAddress
 	}
 
+	for _, networkSettings := range container.NetworkSettings.Networks {
+		if networkSettings != nil && networkSettings.IPAddress != "" {
+			return networkSettings.IPAddress
+		}
+	}
+
 	return ""
 }

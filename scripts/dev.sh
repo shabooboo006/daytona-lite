@@ -260,6 +260,8 @@ start_services() {
   log_info "启动开发基础设施（docker-compose.dev.yml）..."
   local runner_api_key
   runner_api_key="$(get_api_env_value "DEFAULT_RUNNER_API_KEY" "local_runner_key")"
+  log_info "构建本地 Runner 开发镜像..."
+  DEFAULT_RUNNER_API_KEY="$runner_api_key" compose_cmd build runner
 
   if [ ${#profiles[@]} -gt 0 ]; then
     DEFAULT_RUNNER_API_KEY="$runner_api_key" compose_cmd up -d "${profiles[@]}"
@@ -441,18 +443,6 @@ run_api() {
   if [[ "${S3_STS_ENDPOINT:-}" == *"minio:9000"* ]] || [ -z "${S3_STS_ENDPOINT:-}" ]; then
     export S3_STS_ENDPOINT="http://localhost:9000/minio/v1/assume-role"
   fi
-  if [[ "${TRANSIENT_REGISTRY_URL:-}" == *"registry:5000"* ]] || \
-     [[ "${TRANSIENT_REGISTRY_URL:-}" == *"registry:6000"* ]] || \
-     [[ "${TRANSIENT_REGISTRY_URL:-}" == *"localhost:6000"* ]] || \
-     [ -z "${TRANSIENT_REGISTRY_URL:-}" ]; then
-    export TRANSIENT_REGISTRY_URL="http://host.docker.internal:6000"
-  fi
-  if [[ "${INTERNAL_REGISTRY_URL:-}" == *"registry:5000"* ]] || \
-     [[ "${INTERNAL_REGISTRY_URL:-}" == *"registry:6000"* ]] || \
-     [[ "${INTERNAL_REGISTRY_URL:-}" == *"localhost:6000"* ]] || \
-     [ -z "${INTERNAL_REGISTRY_URL:-}" ]; then
-    export INTERNAL_REGISTRY_URL="http://host.docker.internal:6000"
-  fi
   if [[ "${DEFAULT_RUNNER_DOMAIN:-}" == *"runner"* ]] || [ -z "${DEFAULT_RUNNER_DOMAIN:-}" ]; then
     export DEFAULT_RUNNER_DOMAIN="localhost:3003"
   fi
@@ -461,6 +451,9 @@ run_api() {
   fi
   if [[ "${DEFAULT_RUNNER_PROXY_URL:-}" == *"runner"* ]] || [ -z "${DEFAULT_RUNNER_PROXY_URL:-}" ]; then
     export DEFAULT_RUNNER_PROXY_URL="http://localhost:3003"
+  fi
+  if [ -z "${DEFAULT_RUNNER_DOCKER_MODE:-}" ]; then
+    export DEFAULT_RUNNER_DOCKER_MODE="host"
   fi
   if [ "${DASHBOARD_BASE_API_URL:-}" = "http://localhost:3000" ]; then
     export DASHBOARD_BASE_API_URL="http://localhost:${PORT:-3001}"

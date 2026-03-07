@@ -15,6 +15,7 @@ import {
   RunnerSnapshotInfo,
   StartSandboxResponse,
   SnapshotDigestResponse,
+  LocalImage,
 } from './runnerAdapter'
 import { SnapshotStateError } from '../errors/snapshot-state-error'
 import { Runner } from '../entities/runner.entity'
@@ -52,6 +53,7 @@ export class RunnerAdapterV0 implements RunnerAdapter {
   private snapshotApiClient: SnapshotsApi
   private runnerApiClient: DefaultApi
   private toolboxApiClient: ToolboxApi
+  private axiosInstance: ReturnType<typeof axios.create>
 
   private convertSandboxState(state: EnumsSandboxState): SandboxState {
     switch (state) {
@@ -100,7 +102,7 @@ export class RunnerAdapterV0 implements RunnerAdapter {
       throw new Error('Runner API URL is required')
     }
 
-    const axiosInstance = axios.create({
+    this.axiosInstance = axios.create({
       baseURL: runner.apiUrl,
       headers: {
         Authorization: `Bearer ${runner.apiKey}`,
@@ -111,7 +113,7 @@ export class RunnerAdapterV0 implements RunnerAdapter {
     const retryErrorMap = new WeakMap<AxiosError, string>()
 
     // Configure axios-retry to handle network errors
-    axiosRetry(axiosInstance, {
+    axiosRetry(this.axiosInstance, {
       retries: 3,
       retryDelay: axiosRetry.exponentialDelay,
       retryCondition: (error) => {
@@ -135,7 +137,7 @@ export class RunnerAdapterV0 implements RunnerAdapter {
       },
     })
 
-    axiosInstance.interceptors.response.use(
+    this.axiosInstance.interceptors.response.use(
       (response) => {
         return response
       },
@@ -149,13 +151,13 @@ export class RunnerAdapterV0 implements RunnerAdapter {
     )
 
     if (isDebugEnabled) {
-      axiosDebug.addLogger(axiosInstance)
+      axiosDebug.addLogger(this.axiosInstance)
     }
 
-    this.sandboxApiClient = new SandboxApi(new Configuration(), '', axiosInstance)
-    this.snapshotApiClient = new SnapshotsApi(new Configuration(), '', axiosInstance)
-    this.runnerApiClient = new DefaultApi(new Configuration(), '', axiosInstance)
-    this.toolboxApiClient = new ToolboxApi(new Configuration(), '', axiosInstance)
+    this.sandboxApiClient = new SandboxApi(new Configuration(), '', this.axiosInstance)
+    this.snapshotApiClient = new SnapshotsApi(new Configuration(), '', this.axiosInstance)
+    this.runnerApiClient = new DefaultApi(new Configuration(), '', this.axiosInstance)
+    this.toolboxApiClient = new ToolboxApi(new Configuration(), '', this.axiosInstance)
   }
 
   async healthCheck(signal?: AbortSignal): Promise<void> {
@@ -396,6 +398,13 @@ export class RunnerAdapterV0 implements RunnerAdapter {
       hash: response.data.hash,
       sizeGB: response.data.sizeGB,
     }
+  }
+
+  async listLocalImages(query?: string): Promise<LocalImage[]> {
+    const response = await this.axiosInstance.get<LocalImage[]>('/images/local', {
+      params: query ? { q: query } : undefined,
+    })
+    return response.data
   }
 
   async updateNetworkSettings(

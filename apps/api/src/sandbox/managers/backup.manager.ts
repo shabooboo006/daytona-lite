@@ -451,7 +451,15 @@ export class BackupManager implements TrackableJobExecutions, OnApplicationShutd
   }
 
   private async deleteSandboxBackupRepositoryFromRegistry(sandbox: Sandbox): Promise<void> {
+    if (!sandbox.backupRegistryId) {
+      return
+    }
+
     const registry = await this.dockerRegistryService.findOne(sandbox.backupRegistryId)
+    if (!registry) {
+      this.logger.warn(`Skipping backup repository cleanup for sandbox ${sandbox.id}: backup registry not found`)
+      return
+    }
 
     try {
       await this.dockerRegistryService.deleteSandboxRepository(sandbox.id, registry)
@@ -518,18 +526,18 @@ export class BackupManager implements TrackableJobExecutions, OnApplicationShutd
   @OnEvent(SandboxEvents.ARCHIVED)
   @TrackJobExecution()
   private async handleSandboxArchivedEvent(event: SandboxArchivedEvent) {
-    this.setBackupPending(event.sandbox)
+    await this.setBackupPending(event.sandbox)
   }
 
   @OnEvent(SandboxEvents.DESTROYED)
   @TrackJobExecution()
   private async handleSandboxDestroyedEvent(event: SandboxDestroyedEvent) {
-    this.deleteSandboxBackupRepositoryFromRegistry(event.sandbox)
+    await this.deleteSandboxBackupRepositoryFromRegistry(event.sandbox)
   }
 
   @OnEvent(SandboxEvents.BACKUP_CREATED)
   @TrackJobExecution()
   private async handleSandboxBackupCreatedEvent(event: SandboxBackupCreatedEvent) {
-    this.setBackupPending(event.sandbox)
+    await this.setBackupPending(event.sandbox)
   }
 }

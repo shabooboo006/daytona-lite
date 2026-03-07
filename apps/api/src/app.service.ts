@@ -55,7 +55,6 @@ export class AppService implements OnApplicationBootstrap, OnApplicationShutdown
     await this.initializeDefaultRegion()
     await this.initializeAdminUser()
     await this.initializeTransientRegistry()
-    await this.initializeBackupRegistry()
     await this.initializeInternalRegistry()
     await this.initializeBackupRegistry()
 
@@ -96,6 +95,11 @@ export class AppService implements OnApplicationBootstrap, OnApplicationShutdown
   }
 
   private async initializeDefaultRunner(): Promise<void> {
+    if (!this.configService.get('autoRegisterLocalRunner')) {
+      this.logger.log('Skipping default runner initialization because auto registration is disabled')
+      return
+    }
+
     if (!this.configService.get('defaultRunner.name')) {
       return
     }
@@ -207,6 +211,11 @@ Admin user created with API key: ${value}
   }
 
   private async initializeTransientRegistry(): Promise<void> {
+    if (!this.configService.get('enableDefaultTransientRegistry')) {
+      this.logger.log('Skipping default transient registry initialization')
+      return
+    }
+
     const existingRegistry = await this.dockerRegistryService.getAvailableTransientRegistry(
       this.configService.getOrThrow('defaultRegion.id'),
     )
@@ -240,6 +249,11 @@ Admin user created with API key: ${value}
   }
 
   private async initializeInternalRegistry(): Promise<void> {
+    if (!this.configService.get('enableDefaultInternalRegistry')) {
+      this.logger.log('Skipping default internal registry initialization')
+      return
+    }
+
     const existingRegistry = await this.dockerRegistryService.getAvailableInternalRegistry(
       this.configService.getOrThrow('defaultRegion.id'),
     )
@@ -273,6 +287,11 @@ Admin user created with API key: ${value}
   }
 
   private async initializeBackupRegistry(): Promise<void> {
+    if (!this.configService.get('enableDefaultBackupRegistry')) {
+      this.logger.log('Skipping default backup registry initialization')
+      return
+    }
+
     const existingRegistry = await this.dockerRegistryService.getAvailableBackupRegistry(
       this.configService.getOrThrow('defaultRegion.id'),
     )
@@ -311,12 +330,11 @@ Admin user created with API key: ${value}
 
   private async initializeDefaultSnapshot(): Promise<void> {
     const adminPersonalOrg = await this.organizationService.findPersonal(DAYTONA_ADMIN_USER_ID)
+    const defaultSnapshot = this.configService.getOrThrow('defaultSnapshot')
+    const defaultRegionId = adminPersonalOrg.defaultRegionId ?? this.configService.getOrThrow('defaultRegion.id')
 
     try {
-      const existingSnapshot = await this.snapshotService.getSnapshotByName(
-        this.configService.getOrThrow('defaultSnapshot'),
-        adminPersonalOrg.id,
-      )
+      const existingSnapshot = await this.snapshotService.getSnapshotByName(defaultSnapshot, adminPersonalOrg.id)
       if (existingSnapshot) {
         return
       }
@@ -324,13 +342,29 @@ Admin user created with API key: ${value}
       this.logger.log('Default snapshot not found, creating...')
     }
 
-    const defaultSnapshot = this.configService.getOrThrow('defaultSnapshot')
+    if (this.configService.get('localImageMode') && !this.configService.get('registryFallbackEnabled')) {
+      const localImages = await this.snapshotService.listLocalImages(adminPersonalOrg, defaultRegionId, defaultSnapshot, true)
+      const hasLocalImage = localImages.some(
+        (image) =>
+          image.imageName === defaultSnapshot ||
+          image.repoTags?.includes(defaultSnapshot) ||
+          image.repoDigests?.includes(defaultSnapshot),
+      )
+
+      if (!hasLocalImage) {
+        this.logger.warn(
+          `Skipping default snapshot initialization for ${defaultSnapshot}: local image mode is enabled, registry fallback is disabled, and no ready runner in region ${defaultRegionId} currently has the image`,
+        )
+        return
+      }
+    }
 
     await this.snapshotService.createFromPull(
       adminPersonalOrg,
       {
         name: defaultSnapshot,
         imageName: defaultSnapshot,
+        regionId: defaultRegionId,
       },
       true,
     )

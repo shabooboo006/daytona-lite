@@ -63,6 +63,13 @@ const configuration = {
     from: process.env.SMTP_EMAIL_FROM || 'noreply@mail.daytona.io',
   },
   defaultSnapshot: process.env.DEFAULT_SNAPSHOT,
+  localImageMode: process.env.LOCAL_IMAGE_MODE !== 'false',
+  localImageScanEnabled: process.env.LOCAL_IMAGE_SCAN_ENABLED !== 'false',
+  registryFallbackEnabled: process.env.REGISTRY_FALLBACK_ENABLED !== 'false',
+  autoRegisterLocalRunner: process.env.AUTO_REGISTER_LOCAL_RUNNER !== 'false',
+  enableDefaultInternalRegistry: process.env.ENABLE_DEFAULT_INTERNAL_REGISTRY === 'true',
+  enableDefaultTransientRegistry: process.env.ENABLE_DEFAULT_TRANSIENT_REGISTRY === 'true',
+  enableDefaultBackupRegistry: process.env.ENABLE_DEFAULT_BACKUP_REGISTRY === 'true',
   dashboardUrl: process.env.DASHBOARD_URL,
   // Default to empty string - dashboard will then hit '/api'
   dashboardBaseApiUrl: process.env.DASHBOARD_BASE_API_URL || '',
@@ -172,6 +179,7 @@ const configuration = {
     disk: parseInt(process.env.DEFAULT_RUNNER_DISK || '50', 10),
     apiVersion: (process.env.DEFAULT_RUNNER_API_VERSION || '2') as '0' | '2',
     name: process.env.DEFAULT_RUNNER_NAME,
+    dockerMode: (process.env.DEFAULT_RUNNER_DOCKER_MODE || 'host') as 'host' | 'dind',
   },
   runnerScore: {
     thresholds: {

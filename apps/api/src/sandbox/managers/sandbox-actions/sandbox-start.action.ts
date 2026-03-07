@@ -29,6 +29,7 @@ import { LockCode, RedisLockProvider } from '../../common/redis-lock.provider'
 import { InjectRedis } from '@nestjs-modules/ioredis'
 import Redis from 'ioredis'
 import { WithSpan } from '../../../common/decorators/otel.decorator'
+import { SnapshotStorageMode } from '../../enums/snapshot-storage-mode.enum'
 
 @Injectable()
 export class SandboxStartAction extends SandboxAction {
@@ -168,11 +169,12 @@ export class SandboxStartAction extends SandboxAction {
   ): Promise<SyncState> {
     // Get snapshot reference based on whether it's a pull or build operation
     let snapshotRef: string
+    let snapshot: Snapshot | undefined
 
     if (isBuild) {
       snapshotRef = sandbox.buildInfo.snapshotRef
     } else {
-      const snapshot = await this.snapshotService.getSnapshotByName(sandbox.snapshot, sandbox.organizationId)
+      snapshot = await this.snapshotService.getSnapshotByName(sandbox.snapshot, sandbox.organizationId)
       snapshotRef = snapshot.ref
     }
 
@@ -195,6 +197,30 @@ export class SandboxStartAction extends SandboxAction {
       }
     } catch {
       // Continue to next assignment method
+    }
+
+    if (!isBuild && snapshot?.storageMode === SnapshotStorageMode.LOCAL_ONLY) {
+      await this.snapshotService.refreshLocalSnapshotRunners(snapshot, sandbox.region)
+
+      try {
+        const runner = await this.runnerService.getRandomAvailableRunner({
+          regions: [sandbox.region],
+          sandboxClass: sandbox.class,
+          snapshotRef,
+        })
+
+        await this.updateSandboxState(sandbox, SandboxState.UNKNOWN, lockCode, runner.id)
+        return SYNC_AGAIN
+      } catch {
+        await this.updateSandboxState(
+          sandbox,
+          SandboxState.ERROR,
+          lockCode,
+          undefined,
+          `No ready runner in region ${sandbox.region} has local snapshot ${snapshot.name}`,
+        )
+        return DONT_SYNC_AGAIN
+      }
     }
 
     // Try to assign an available runner that is currently processing the snapshot
@@ -246,7 +272,7 @@ export class SandboxStartAction extends SandboxAction {
       this.buildOnRunner(sandbox.buildInfo, runner, sandbox.organizationId)
       await this.updateSandboxState(sandbox, SandboxState.BUILDING_SNAPSHOT, lockCode, runner.id)
     } else {
-      const snapshot = await this.snapshotService.getSnapshotByName(sandbox.snapshot, sandbox.organizationId)
+      snapshot = snapshot ?? (await this.snapshotService.getSnapshotByName(sandbox.snapshot, sandbox.organizationId))
       await this.runnerService.createSnapshotRunnerEntry(runner.id, snapshot.ref, SnapshotRunnerState.PULLING_SNAPSHOT)
       this.pullSnapshotToRunner(snapshot, runner)
       await this.updateSandboxState(sandbox, SandboxState.PULLING_SNAPSHOT, lockCode, runner.id)
@@ -256,6 +282,10 @@ export class SandboxStartAction extends SandboxAction {
   }
 
   async pullSnapshotToRunner(snapshot: Snapshot, runner: Runner) {
+    if (snapshot.storageMode === SnapshotStorageMode.LOCAL_ONLY) {
+      return
+    }
+
     const internalRegistry = await this.dockerRegistryService.findInternalRegistryBySnapshotRef(
       snapshot.ref,
       runner.region,
@@ -356,16 +386,18 @@ export class SandboxStartAction extends SandboxAction {
 
     const runnerAdapter = await this.runnerAdapterFactory.create(runner)
 
-    let internalRegistry: DockerRegistry
+    let internalRegistry: DockerRegistry | undefined
     let entrypoint: string[]
     if (!sandbox.buildInfo) {
       //  get internal snapshot name
       const snapshot = await this.snapshotService.getSnapshotByName(sandbox.snapshot, sandbox.organizationId)
       const snapshotRef = snapshot.ref
 
-      internalRegistry = await this.dockerRegistryService.findInternalRegistryBySnapshotRef(snapshotRef, runner.region)
-      if (!internalRegistry) {
-        throw new Error('No registry found for snapshot')
+      if (snapshot.storageMode === SnapshotStorageMode.REGISTRY) {
+        internalRegistry = await this.dockerRegistryService.findInternalRegistryBySnapshotRef(snapshotRef, runner.region)
+        if (!internalRegistry) {
+          throw new Error('No registry found for snapshot')
+        }
       }
 
       sandbox.snapshot = snapshotRef

@@ -72,6 +72,11 @@ func NewDockerClient(config DockerClientConfig) (*DockerClient, error) {
 		}
 	}
 
+	platformArchitecture, err := normalizeDockerArchitecture(info.Architecture)
+	if err != nil {
+		return nil, err
+	}
+
 	return &DockerClient{
 		apiClient:                    config.ApiClient,
 		statesCache:                  config.StatesCache,
@@ -94,6 +99,8 @@ func NewDockerClient(config DockerClientConfig) (*DockerClient, error) {
 		backupTimeoutMin:             config.BackupTimeoutMin,
 		initializeDaemonTelemetry:    config.InitializeDaemonTelemetry,
 		filesystem:                   filesystem,
+		platformOS:                   normalizeDockerOS(info.OSType),
+		platformArchitecture:         platformArchitecture,
 	}, nil
 }
 
@@ -126,4 +133,6 @@ type DockerClient struct {
 	lastVolumeCleanup            time.Time
 	initializeDaemonTelemetry    bool
 	filesystem                   string
+	platformOS                   string
+	platformArchitecture         string
 }

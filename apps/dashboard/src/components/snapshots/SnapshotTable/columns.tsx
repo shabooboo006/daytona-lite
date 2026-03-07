@@ -23,6 +23,11 @@ import {
 } from '../../ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip'
 
+type SnapshotView = SnapshotDto & {
+  sourceType?: 'local_image' | 'registry_image' | 'build'
+  storageMode?: 'local_only' | 'registry'
+}
+
 type SnapshotTableMeta = {
   writePermitted: boolean
   deletePermitted: boolean
@@ -252,6 +257,23 @@ const columns: ColumnDef<SnapshotDto>[] = [
     },
   },
   {
+    id: 'source',
+    enableSorting: false,
+    header: 'Source',
+    cell: ({ row }) => {
+      const snapshot = row.original as SnapshotView
+
+      return (
+        <div className="flex flex-col gap-1">
+          <Badge variant="secondary" className="w-fit">
+            {getSourceLabel(snapshot)}
+          </Badge>
+          <span className="text-xs text-muted-foreground">{getStorageLabel(snapshot)}</span>
+        </div>
+      )
+    },
+  },
+  {
     accessorKey: 'createdAt',
     enableSorting: true,
     header: ({ column }) => <SortableHeader column={column} label={i18n.t('snapshotsModule.headers.created')} />,
@@ -369,6 +391,30 @@ const getStateLabel = (state: SnapshotState) => {
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ')
   )
+}
+
+const getSourceLabel = (snapshot: SnapshotView) => {
+  switch (snapshot.sourceType) {
+    case 'local_image':
+      return 'Local image'
+    case 'build':
+      return 'Build'
+    case 'registry_image':
+      return 'Registry image'
+    default:
+      return snapshot.buildInfo ? 'Build' : 'Registry image'
+  }
+}
+
+const getStorageLabel = (snapshot: SnapshotView) => {
+  switch (snapshot.storageMode) {
+    case 'local_only':
+      return 'Local only'
+    case 'registry':
+      return 'Registry distributed'
+    default:
+      return 'Registry distributed'
+  }
 }
 
 export { columns }

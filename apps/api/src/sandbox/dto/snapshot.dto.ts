@@ -8,6 +8,8 @@ import { SnapshotState } from '../enums/snapshot-state.enum'
 import { Snapshot } from '../entities/snapshot.entity'
 import { BuildInfoDto } from './build-info.dto'
 import { IsOptional } from 'class-validator'
+import { SnapshotSourceType } from '../enums/snapshot-source-type.enum'
+import { SnapshotStorageMode } from '../enums/snapshot-storage-mode.enum'
 
 export class SnapshotDto {
   @ApiProperty()
@@ -89,6 +91,18 @@ export class SnapshotDto {
   @IsOptional()
   ref?: string
 
+  @ApiProperty({
+    enum: SnapshotSourceType,
+    enumName: 'SnapshotSourceType',
+  })
+  sourceType: SnapshotSourceType
+
+  @ApiProperty({
+    enum: SnapshotStorageMode,
+    enumName: 'SnapshotStorageMode',
+  })
+  storageMode: SnapshotStorageMode
+
   static fromSnapshot(snapshot: Snapshot): SnapshotDto {
     return {
       id: snapshot.id,
@@ -119,6 +133,8 @@ export class SnapshotDto {
       regionIds: snapshot.snapshotRegions?.map((sr) => sr.regionId) ?? undefined,
       initialRunnerId: snapshot.initialRunnerId,
       ref: snapshot.ref,
+      sourceType: snapshot.sourceType,
+      storageMode: snapshot.storageMode,
     }
   }
 }

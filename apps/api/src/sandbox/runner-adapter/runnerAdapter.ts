@@ -34,6 +34,15 @@ export interface SnapshotDigestResponse {
   sizeGB: number
 }
 
+export interface LocalImage {
+  imageName: string
+  repoTags?: string[]
+  repoDigests?: string[]
+  sizeGB: number
+  entrypoint?: string[]
+  cmd?: string[]
+}
+
 export interface RunnerMetrics {
   currentAllocatedCpu?: number
   currentAllocatedDiskGiB?: number
@@ -98,6 +107,7 @@ export interface RunnerAdapter {
   snapshotExists(snapshotRef: string): Promise<boolean>
   getSnapshotInfo(snapshotName: string): Promise<RunnerSnapshotInfo>
   inspectSnapshotInRegistry(snapshotName: string, registry?: DockerRegistry): Promise<SnapshotDigestResponse>
+  listLocalImages(query?: string): Promise<LocalImage[]>
 
   updateNetworkSettings(
     sandboxId: string,

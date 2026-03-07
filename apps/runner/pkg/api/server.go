@@ -127,6 +127,11 @@ func (a *ApiServer) Start(ctx context.Context) error {
 		infoController.GET("", controllers.RunnerInfo)
 	}
 
+	imageController := protected.Group("/images")
+	{
+		imageController.GET("/local", controllers.ListLocalImages)
+	}
+
 	sandboxControllerLogger := a.logger.With(slog.String("component", "sandbox_controller"))
 	sandboxController := protected.Group("/sandboxes")
 	{

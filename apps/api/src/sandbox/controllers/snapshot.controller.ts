@@ -62,6 +62,7 @@ import { ListSnapshotsQueryDto } from '../dto/list-snapshots-query.dto'
 import { SnapshotState } from '../enums/snapshot-state.enum'
 import { AuthenticatedRateLimitGuard } from '../../common/guards/authenticated-rate-limit.guard'
 import { UrlDto } from '../../common/dto/url.dto'
+import { AggregatedLocalImageDto } from '../dto/local-image.dto'
 
 @ApiTags('snapshots')
 @Controller('snapshots')
@@ -158,6 +159,41 @@ export class SnapshotController {
   @RequiredSystemRole(SystemRole.ADMIN)
   async canCleanupImage(@Query('imageName') imageName: string): Promise<boolean> {
     return this.snapshotService.canCleanupImage(imageName)
+  }
+
+  @Get('local-images')
+  @ApiOperation({
+    summary: 'List aggregated local images from ready runners',
+    operationId: 'getLocalImages',
+  })
+  @ApiQuery({
+    name: 'regionId',
+    required: false,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'q',
+    required: false,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'refresh',
+    required: false,
+    type: Boolean,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Aggregated local images for the selected region',
+    type: AggregatedLocalImageDto,
+    isArray: true,
+  })
+  async getLocalImages(
+    @AuthContext() authContext: OrganizationAuthContext,
+    @Query('regionId') regionId?: string,
+    @Query('q') query?: string,
+    @Query('refresh', new ParseBoolPipe({ optional: true })) refresh = false,
+  ): Promise<AggregatedLocalImageDto[]> {
+    return this.snapshotService.listLocalImages(authContext.organization, regionId, query, refresh)
   }
 
   @Get(':id')

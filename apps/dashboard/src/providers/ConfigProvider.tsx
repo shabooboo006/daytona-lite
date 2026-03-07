@@ -5,10 +5,10 @@
 
 import { RoutePath } from '@/enums/RoutePath'
 import { queryKeys } from '@/hooks/queries/queryKeys'
-import { DaytonaConfiguration } from '@daytonaio/api-client'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { ReactNode } from 'react'
 import { ConfigContext } from '../contexts/ConfigContext'
+import { DashboardConfig } from '@/types/DashboardConfig'
 
 const apiUrl = (import.meta.env.VITE_BASE_API_URL ?? window.location.origin) + '/api'
 
@@ -24,7 +24,7 @@ export function ConfigProvider(props: Props) {
       if (!res.ok) {
         throw res
       }
-      return res.json() as Promise<DaytonaConfiguration>
+      return res.json() as Promise<DashboardConfig>
     },
   })
 

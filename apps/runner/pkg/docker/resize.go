@@ -155,8 +155,8 @@ func (d *DockerClient) ContainerDiskResize(ctx context.Context, sandboxId string
 				newHostConfig,
 				nil,
 				&v1.Platform{
-					Architecture: "amd64",
-					OS:           "linux",
+					Architecture: d.platformArchitecture,
+					OS:           d.platformOS,
 				},
 				sandboxId,
 			)
