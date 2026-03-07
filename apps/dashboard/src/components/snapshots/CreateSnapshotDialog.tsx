@@ -4,6 +4,7 @@
  */
 
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogClose,
@@ -19,6 +20,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { useCreateSnapshotMutation } from '@/hooks/mutations/useCreateSnapshotMutation'
+import { useApi } from '@/hooks/useApi'
+import { useConfig } from '@/hooks/useConfig'
 import { useSelectedOrganization } from '@/hooks/useSelectedOrganization'
 import { handleApiError } from '@/lib/error-handling'
 import { translateLiteralText } from '@/i18n/literalTranslations'
@@ -59,6 +62,15 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 
+type LocalImageItem = {
+  imageName: string
+  sizeGB: number
+  entrypoint?: string[]
+  cmd?: string[]
+  runnerIds: string[]
+  runnerCount: number
+}
+
 const defaultValues: FormValues = {
   name: '',
   imageName: '',
@@ -71,7 +83,13 @@ const defaultValues: FormValues = {
 export const CreateSnapshotDialog = ({ className, ref }: { className?: string; ref?: Ref<{ open: () => void }> }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [localImages, setLocalImages] = useState<LocalImageItem[]>([])
+  const [localImageQuery, setLocalImageQuery] = useState('')
+  const [localImagesLoading, setLocalImagesLoading] = useState(false)
+  const [localImagesError, setLocalImagesError] = useState<string | null>(null)
 
+  const api = useApi()
+  const config = useConfig()
   const { selectedOrganization } = useSelectedOrganization()
   const { reset: resetCreateSnapshotMutation, ...createSnapshotMutation } = useCreateSnapshotMutation()
   const formRef = useRef<HTMLFormElement>(null)
@@ -125,6 +143,9 @@ export const CreateSnapshotDialog = ({ className, ref }: { className?: string; r
 
   const resetState = useCallback(() => {
     form.reset(defaultValues)
+    setLocalImageQuery('')
+    setLocalImages([])
+    setLocalImagesError(null)
     resetCreateSnapshotMutation()
   }, [resetCreateSnapshotMutation, form])
 
@@ -133,6 +154,53 @@ export const CreateSnapshotDialog = ({ className, ref }: { className?: string; r
       resetState()
     }
   }, [open, resetState])
+
+  useEffect(() => {
+    if (!open || !selectedOrganization?.id || config.localImageScanEnabled === false) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(async () => {
+      setLocalImagesLoading(true)
+      setLocalImagesError(null)
+
+      try {
+        const response = await api.axiosInstance.get<LocalImageItem[]>('/snapshots/local-images', {
+          params: {
+            regionId: selectedOrganization.defaultRegionId || undefined,
+            q: localImageQuery || undefined,
+          },
+          headers: {
+            'X-Daytona-Organization-ID': selectedOrganization.id,
+          },
+        })
+
+        setLocalImages(response.data)
+      } catch (error) {
+        setLocalImages([])
+        setLocalImagesError(
+          error instanceof Error ? error.message : translateLiteralText('Failed to load local images'),
+        )
+      } finally {
+        setLocalImagesLoading(false)
+      }
+    }, 250)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [api, config.localImageScanEnabled, localImageQuery, open, selectedOrganization?.defaultRegionId, selectedOrganization?.id])
+
+  const applyLocalImage = useCallback(
+    (image: LocalImageItem) => {
+      form.setFieldValue('imageName', image.imageName)
+      form.setFieldValue('entrypoint', image.entrypoint?.join(' ') || '')
+
+      const currentName = form.getFieldValue('name')
+      if (!currentName?.trim()) {
+        form.setFieldValue('name', toSnapshotName(image.imageName))
+      }
+    },
+    [form],
+  )
 
   return (
     <Dialog
@@ -216,6 +284,59 @@ export const CreateSnapshotDialog = ({ className, ref }: { className?: string; r
                 )
               }}
             </form.Field>
+
+            {config.localImageMode !== false && (
+              <Field>
+                <FieldLabel htmlFor="local-image-search">Local images</FieldLabel>
+                <Input
+                  id="local-image-search"
+                  value={localImageQuery}
+                  onChange={(e) => setLocalImageQuery(e.target.value)}
+                  placeholder="Search local images on ready runners"
+                />
+                <FieldDescription>
+                  Local images are the default source. Registry fallback is only used when the selected image is not
+                  available on a ready runner.
+                </FieldDescription>
+                <div className="rounded-md border overflow-hidden">
+                  <div className="max-h-56 overflow-auto">
+                    {localImagesLoading ? (
+                      <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
+                        <Spinner />
+                        Loading local images...
+                      </div>
+                    ) : localImagesError ? (
+                      <div className="px-3 py-4 text-sm text-destructive">{localImagesError}</div>
+                    ) : localImages.length === 0 ? (
+                      <div className="px-3 py-4 text-sm text-muted-foreground">
+                        No local images found in the selected region.
+                      </div>
+                    ) : (
+                      localImages.map((image) => (
+                        <button
+                          key={image.imageName}
+                          type="button"
+                          className="w-full border-b last:border-b-0 px-3 py-3 text-left hover:bg-muted/50 transition-colors"
+                          onClick={() => applyLocalImage(image)}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="font-medium truncate">{image.imageName}</div>
+                              <div className="text-xs text-muted-foreground flex flex-wrap gap-2 mt-1">
+                                <span>{image.sizeGB.toFixed(2)} GiB</span>
+                                <span>{image.runnerCount} runner{image.runnerCount > 1 ? 's' : ''}</span>
+                                {image.entrypoint?.length ? <span>entrypoint: {image.entrypoint.join(' ')}</span> : null}
+                              </div>
+                            </div>
+                            <Badge variant="secondary">Use</Badge>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </Field>
+            )}
 
             <Field>
               <FieldLabel>Region</FieldLabel>
@@ -334,4 +455,13 @@ export const CreateSnapshotDialog = ({ className, ref }: { className?: string; r
       </DialogContent>
     </Dialog>
   )
+}
+
+function toSnapshotName(imageName: string): string {
+  return imageName
+    .replace(/@sha256:[a-f0-9]{64}$/i, '')
+    .replace(/[^a-zA-Z0-9_.:/-]+/g, '-')
+    .replace(/[/:@]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 63)
 }

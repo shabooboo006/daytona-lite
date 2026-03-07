@@ -161,7 +161,7 @@ const Registries: React.FC = () => {
       <DialogHeader>
         <DialogTitle>{registryToEdit ? 'Edit Registry' : 'Add Registry'}</DialogTitle>
         <DialogDescription>
-          Registry details must be provided for images that are not publicly available.
+          Registries are optional extensions. Add one when you need private image credentials, cross-runner image distribution, or backup and restore support.
         </DialogDescription>
       </DialogHeader>
       <form

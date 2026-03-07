@@ -106,9 +106,9 @@ export function RegistryTable({ data, loading, onDelete, onEdit }: DataTableProp
             ) : (
               <TableEmptyState
                 colSpan={columns.length}
-                message="No Container registries found."
+                message="No container registries configured."
                 icon={<Package className="w-8 h-8" />}
-                description="Connect to external container registries (e.g., Docker Hub, GCR, ECR) to pull images for your Sandboxes."
+                description="Registries are optional. Use them for private image credentials, cross-runner distribution, and backup or restore workflows."
               />
             )}
           </TableBody>
