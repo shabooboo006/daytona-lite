@@ -48,7 +48,7 @@ func (d *DockerClient) PullImage(ctx context.Context, imageName string, reg *dto
 
 	responseBody, err := d.apiClient.ImagePull(ctx, imageName, image.PullOptions{
 		RegistryAuth: getRegistryAuth(reg),
-		Platform:     "linux/amd64",
+		Platform:     d.imagePlatform(),
 	})
 	if err != nil {
 		return nil, err

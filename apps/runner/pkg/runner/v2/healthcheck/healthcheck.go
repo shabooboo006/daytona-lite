@@ -18,27 +18,25 @@ import (
 )
 
 type HealthcheckServiceConfig struct {
-	Interval   time.Duration
-	Timeout    time.Duration
-	Collector  *metrics.Collector
-	Logger     *slog.Logger
-	Domain     string
-	ApiPort    int
-	ProxyPort  int
-	TlsEnabled bool
+	Interval  time.Duration
+	Timeout   time.Duration
+	Collector *metrics.Collector
+	Logger    *slog.Logger
+	Domain    string
+	ApiUrl    string
+	ProxyUrl  string
 }
 
 // Service handles healthcheck reporting to the API
 type Service struct {
-	log        *slog.Logger
-	interval   time.Duration
-	timeout    time.Duration
-	collector  *metrics.Collector
-	client     *apiclient.APIClient
-	domain     string
-	apiPort    int
-	proxyPort  int
-	tlsEnabled bool
+	log       *slog.Logger
+	interval  time.Duration
+	timeout   time.Duration
+	collector *metrics.Collector
+	client    *apiclient.APIClient
+	domain    string
+	apiUrl    string
+	proxyUrl  string
 }
 
 // NewService creates a new healthcheck service
@@ -49,15 +47,14 @@ func NewService(cfg *HealthcheckServiceConfig) (*Service, error) {
 	}
 
 	return &Service{
-		log:        cfg.Logger.With(slog.String("component", "healthcheck")),
-		client:     apiClient,
-		interval:   cfg.Interval,
-		timeout:    cfg.Timeout,
-		collector:  cfg.Collector,
-		domain:     cfg.Domain,
-		apiPort:    cfg.ApiPort,
-		proxyPort:  cfg.ProxyPort,
-		tlsEnabled: cfg.TlsEnabled,
+		log:       cfg.Logger.With(slog.String("component", "healthcheck")),
+		client:    apiClient,
+		interval:  cfg.Interval,
+		timeout:   cfg.Timeout,
+		collector: cfg.Collector,
+		domain:    cfg.Domain,
+		apiUrl:    cfg.ApiUrl,
+		proxyUrl:  cfg.ProxyUrl,
 	}, nil
 }
 
@@ -117,16 +114,8 @@ func (s *Service) sendHealthcheck(ctx context.Context) error {
 	healthcheck.SetMetrics(*metricsPtr)
 
 	healthcheck.SetDomain(s.domain)
-	proxyUrl := fmt.Sprintf("http://%s:%d", s.domain, s.proxyPort)
-	apiUrl := fmt.Sprintf("http://%s:%d", s.domain, s.apiPort)
-
-	if s.tlsEnabled {
-		apiUrl = fmt.Sprintf("https://%s:%d", s.domain, s.apiPort)
-		proxyUrl = fmt.Sprintf("https://%s:%d", s.domain, s.proxyPort)
-	}
-
-	healthcheck.SetProxyUrl(proxyUrl)
-	healthcheck.SetApiUrl(apiUrl)
+	healthcheck.SetProxyUrl(s.proxyUrl)
+	healthcheck.SetApiUrl(s.apiUrl)
 
 	req := s.client.RunnersAPI.RunnerHealthcheck(reqCtx).RunnerHealthcheck(*healthcheck)
 	_, err = req.Execute()

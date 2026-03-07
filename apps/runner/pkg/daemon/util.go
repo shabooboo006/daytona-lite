@@ -15,12 +15,16 @@ func WriteStaticBinary(name string) (string, error) {
 		return "", err
 	}
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		return "", err
+	tmpBinariesDir := os.Getenv("RUNNER_STATIC_BINARIES_DIR")
+	if tmpBinariesDir == "" {
+		pwd, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+
+		tmpBinariesDir = filepath.Join(pwd, ".tmp", "binaries")
 	}
 
-	tmpBinariesDir := filepath.Join(pwd, ".tmp", "binaries")
 	err = os.MkdirAll(tmpBinariesDir, 0755)
 	if err != nil {
 		return "", err

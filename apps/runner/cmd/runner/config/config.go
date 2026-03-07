@@ -6,9 +6,11 @@ package config
 import (
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -43,6 +45,9 @@ type Config struct {
 	SandboxStartTimeoutSec             int           `envconfig:"SANDBOX_START_TIMEOUT_SEC"`
 	UseSnapshotEntrypoint              bool          `envconfig:"USE_SNAPSHOT_ENTRYPOINT"`
 	Domain                             string        `envconfig:"RUNNER_DOMAIN" validate:"omitempty,hostname|ip"`
+	AdvertiseDomain                    string        `envconfig:"RUNNER_ADVERTISE_DOMAIN" validate:"omitempty,hostname|ip"`
+	AdvertiseApiUrl                    string        `envconfig:"RUNNER_ADVERTISE_API_URL" validate:"omitempty,url"`
+	AdvertiseProxyUrl                  string        `envconfig:"RUNNER_ADVERTISE_PROXY_URL" validate:"omitempty,url"`
 	VolumeCleanupInterval              time.Duration `envconfig:"VOLUME_CLEANUP_INTERVAL" default:"30s" validate:"min=10s"`
 	VolumeCleanupDryRun                bool          `envconfig:"VOLUME_CLEANUP_DRY_RUN" default:"true"`
 	VolumeCleanupExclusionPeriod       time.Duration `envconfig:"VOLUME_CLEANUP_EXCLUSION_PERIOD" default:"120s" validate:"min=0s"`
@@ -133,6 +138,36 @@ func (c *Config) GetOtelHeaders() map[string]string {
 	return headers
 }
 
+func (c *Config) GetAdvertiseDomain() string {
+	if c.AdvertiseDomain != "" {
+		return c.AdvertiseDomain
+	}
+
+	for _, rawURL := range []string{c.AdvertiseApiUrl, c.AdvertiseProxyUrl} {
+		if host := getHostnameFromURL(rawURL); host != "" {
+			return host
+		}
+	}
+
+	return c.Domain
+}
+
+func (c *Config) GetAdvertiseApiUrl() string {
+	if c.AdvertiseApiUrl != "" {
+		return c.AdvertiseApiUrl
+	}
+
+	return buildAdvertiseURL(c.GetAdvertiseDomain(), c.ApiPort, c.EnableTLS)
+}
+
+func (c *Config) GetAdvertiseProxyUrl() string {
+	if c.AdvertiseProxyUrl != "" {
+		return c.AdvertiseProxyUrl
+	}
+
+	return buildAdvertiseURL(c.GetAdvertiseDomain(), c.ApiPort, c.EnableTLS)
+}
+
 func GetContainerRuntime() string {
 	return config.ContainerRuntime
 }
@@ -189,7 +224,7 @@ func GetBuildLogFilePath(snapshotRef string) (string, error) {
 
 // getOutboundIP returns the IP address of the default route's network interface
 func getOutboundIP() (net.IP, error) {
-	routes, err := netlink.RouteList(nil, netlink.FAMILY_V4)
+	routes, err := netlink.RouteList(nil, syscall.AF_INET)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list routes: %w", err)
 	}
@@ -204,7 +239,7 @@ func getOutboundIP() (net.IP, error) {
 			}
 
 			// Get addresses for this interface
-			addrs, err := netlink.AddrList(link, netlink.FAMILY_V4)
+			addrs, err := netlink.AddrList(link, syscall.AF_INET)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get addresses: %w", err)
 			}
@@ -216,4 +251,26 @@ func getOutboundIP() (net.IP, error) {
 	}
 
 	return nil, fmt.Errorf("no default route found")
+}
+
+func buildAdvertiseURL(host string, port int, tlsEnabled bool) string {
+	scheme := "http"
+	if tlsEnabled {
+		scheme = "https"
+	}
+
+	return fmt.Sprintf("%s://%s:%d", scheme, host, port)
+}
+
+func getHostnameFromURL(rawURL string) string {
+	if rawURL == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+
+	return parsed.Hostname()
 }

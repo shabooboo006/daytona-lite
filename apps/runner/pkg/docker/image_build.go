@@ -161,7 +161,7 @@ func (d *DockerClient) BuildImage(ctx context.Context, buildImageDto dto.BuildSn
 		Remove:      true,
 		ForceRemove: true,
 		PullParent:  true,
-		Platform:    "linux/amd64", // Force AMD64 architecture
+		Platform:    d.imagePlatform(),
 		AuthConfigs: authConfigs,
 	})
 	if err != nil {

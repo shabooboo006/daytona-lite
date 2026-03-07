@@ -28,11 +28,11 @@ RUN apk add --no-cache curl rsync
 WORKDIR /usr/local/bin
 
 COPY --from=build /daytona/dist/apps/runner daytona-runner
+COPY apps/runner/docker-entrypoint.sh /usr/local/bin/daytona-runner-entrypoint.sh
 
 RUN chmod +x daytona-runner
-
-RUN mkdir -p /etc/docker && echo '{"insecure-registries": ["registry:6000"]}' > /etc/docker/daemon.json
+RUN chmod +x /usr/local/bin/daytona-runner-entrypoint.sh
 
 HEALTHCHECK CMD [ "curl", "-f", "http://localhost:3003/" ]
 
-ENTRYPOINT ["sh", "-c", "/usr/local/bin/dockerd-entrypoint.sh & daytona-runner"]
+ENTRYPOINT ["/usr/local/bin/daytona-runner-entrypoint.sh"]

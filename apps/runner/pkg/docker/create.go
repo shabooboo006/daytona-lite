@@ -6,7 +6,6 @@ package docker
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/containerd/errdefs"
@@ -85,8 +84,8 @@ func (d *DockerClient) Create(ctx context.Context, sandboxDto dto.CreateSandboxD
 	}
 
 	c, err := d.apiClient.ContainerCreate(ctx, containerConfig, hostConfig, networkingConfig, &v1.Platform{
-		Architecture: "amd64",
-		OS:           "linux",
+		Architecture: d.platformArchitecture,
+		OS:           d.platformOS,
 	}, sandboxDto.Id)
 	if err != nil {
 		// Container already exists and is being created by another process
@@ -144,14 +143,21 @@ func (p *DockerClient) validateImageArchitecture(image *image.InspectResponse) e
 		return fmt.Errorf("image not found")
 	}
 
-	arch := strings.ToLower(image.Architecture)
-	validArchs := []string{"amd64", "x86_64"}
-
-	for _, validArch := range validArchs {
-		if arch == validArch {
-			return nil
-		}
+	imageArchitecture, err := normalizeDockerArchitecture(image.Architecture)
+	if err != nil {
+		return common_errors.NewConflictError(fmt.Errorf("image %s has unsupported architecture %s", image.ID, image.Architecture))
 	}
 
-	return common_errors.NewConflictError(fmt.Errorf("image %s architecture (%s) is not x64 compatible", image.ID, image.Architecture))
+	if imageArchitecture == p.platformArchitecture {
+		return nil
+	}
+
+	return common_errors.NewConflictError(
+		fmt.Errorf(
+			"image %s architecture (%s) is not %s compatible",
+			image.ID,
+			image.Architecture,
+			p.platformArchitecture,
+		),
+	)
 }

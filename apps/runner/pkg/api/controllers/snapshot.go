@@ -223,6 +223,33 @@ func SnapshotExists(ctx *gin.Context) {
 	})
 }
 
+// ListLocalImages godoc
+//
+//	@Tags			snapshots
+//	@Summary		List local images
+//	@Description	List local Docker images available to the runner
+//	@Produce		json
+//	@Param			q	query		string	false	"Search query"
+//	@Success		200	{array}		dto.LocalImageDTO
+//	@Failure		400	{object}	common_errors.ErrorResponse
+//	@Failure		401	{object}	common_errors.ErrorResponse
+//	@Failure		500	{object}	common_errors.ErrorResponse
+//
+//	@Router			/images/local [get]
+//
+//	@id				ListLocalImages
+func ListLocalImages(ctx *gin.Context) {
+	runnerInstance := runner.GetInstance(nil)
+
+	images, err := runnerInstance.Docker.ListLocalImages(ctx.Request.Context(), ctx.Query("q"))
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, images)
+}
+
 // RemoveSnapshot godoc
 //
 //	@Tags			snapshots
