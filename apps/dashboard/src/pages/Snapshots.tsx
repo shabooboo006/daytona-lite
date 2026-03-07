@@ -28,15 +28,18 @@ import { useApi } from '@/hooks/useApi'
 import { useNotificationSocket } from '@/hooks/useNotificationSocket'
 import { useRegions } from '@/hooks/useRegions'
 import { useSelectedOrganization } from '@/hooks/useSelectedOrganization'
+import { translateLiteralText } from '@/i18n/literalTranslations'
 import { createBulkActionToast } from '@/lib/bulk-action-toast'
 import { handleApiError } from '@/lib/error-handling'
 import { pluralize } from '@/lib/utils'
 import { OrganizationRolePermissionsEnum, PaginatedSnapshots, SnapshotDto, SnapshotState } from '@daytonaio/api-client'
 import { useQueryClient } from '@tanstack/react-query'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 const Snapshots: React.FC = () => {
+  const { t } = useTranslation()
   const { notificationSocket } = useNotificationSocket()
   const queryClient = useQueryClient()
 
@@ -79,7 +82,7 @@ const Snapshots: React.FC = () => {
 
   useEffect(() => {
     if (snapshotsDataError) {
-      handleApiError(snapshotsDataError, 'Failed to fetch snapshots')
+      handleApiError(snapshotsDataError, translateLiteralText('Failed to fetch snapshots'))
     }
   }, [snapshotsDataError])
 
@@ -164,9 +167,9 @@ const Snapshots: React.FC = () => {
       await snapshotApi.removeSnapshot(snapshot.id, selectedOrganization?.id)
       setSnapshotToDelete(null)
       setShowDeleteDialog(false)
-      toast.success(`Deleting snapshot ${snapshot.name}`)
+      toast.success(`${translateLiteralText('Deleting snapshot')} ${snapshot.name}`)
     } catch (error) {
-      handleApiError(error, 'Failed to delete snapshot')
+      handleApiError(error, translateLiteralText('Failed to delete snapshot'))
       updateSnapshotInCache(snapshot.id, { state: snapshot.state })
     } finally {
       setLoadingSnapshots((prev) => ({ ...prev, [snapshot.id]: false }))
@@ -179,9 +182,9 @@ const Snapshots: React.FC = () => {
 
     try {
       await snapshotApi.activateSnapshot(snapshot.id, selectedOrganization?.id)
-      toast.success(`Activating snapshot ${snapshot.name}`)
+      toast.success(`${translateLiteralText('Activating snapshot')} ${snapshot.name}`)
     } catch (error) {
-      handleApiError(error, 'Failed to activate snapshot')
+      handleApiError(error, translateLiteralText('Failed to activate snapshot'))
       updateSnapshotInCache(snapshot.id, { state: snapshot.state })
     } finally {
       setLoadingSnapshots((prev) => ({ ...prev, [snapshot.id]: false }))
@@ -194,9 +197,9 @@ const Snapshots: React.FC = () => {
 
     try {
       await snapshotApi.deactivateSnapshot(snapshot.id, selectedOrganization?.id)
-      toast.success(`Deactivating snapshot ${snapshot.name}`)
+      toast.success(`${translateLiteralText('Deactivating snapshot')} ${snapshot.name}`)
     } catch (error) {
-      handleApiError(error, 'Failed to deactivate snapshot')
+      handleApiError(error, translateLiteralText('Failed to deactivate snapshot'))
       updateSnapshotInCache(snapshot.id, { state: snapshot.state })
     } finally {
       setLoadingSnapshots((prev) => ({ ...prev, [snapshot.id]: false }))
@@ -240,7 +243,7 @@ const Snapshots: React.FC = () => {
       }
 
       const bulkToast = createBulkActionToast(`${actionName} 0 of ${totalLabel}.`, {
-        action: { label: 'Cancel', onClick: onCancel },
+        action: { label: t('common.cancel'), onClick: onCancel },
       })
 
       try {
@@ -249,7 +252,7 @@ const Snapshots: React.FC = () => {
 
           processedCount += 1
           bulkToast.loading(`${actionName} ${processedCount} of ${totalLabel}.`, {
-            action: { label: 'Cancel', onClick: onCancel },
+            action: { label: t('common.cancel'), onClick: onCancel },
           })
 
           setLoadingSnapshots((prev) => ({ ...prev, [id]: true }))
@@ -276,7 +279,7 @@ const Snapshots: React.FC = () => {
 
       return { successCount, failureCount }
     },
-    [snapshotsData?.items, updateSnapshotInCache, markAllSnapshotQueriesAsStale],
+    [snapshotsData?.items, updateSnapshotInCache, markAllSnapshotQueriesAsStale, t],
   )
 
   const handleBulkDelete = (snapshots: SnapshotDto[]) =>
@@ -330,7 +333,7 @@ const Snapshots: React.FC = () => {
   return (
     <PageLayout>
       <PageHeader>
-        <PageTitle>Snapshots</PageTitle>
+        <PageTitle>{t('snapshotsModule.title')}</PageTitle>
         {writePermitted && <CreateSnapshotDialog className="ml-auto" ref={dialogRef} />}
       </PageHeader>
 
@@ -373,15 +376,15 @@ const Snapshots: React.FC = () => {
           >
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Confirm Snapshot Deletion</DialogTitle>
+                <DialogTitle>{translateLiteralText('Confirm Snapshot Deletion')}</DialogTitle>
                 <DialogDescription>
-                  Are you sure you want to delete this snapshot? This action cannot be undone.
+                  {translateLiteralText('Are you sure you want to delete this snapshot? This action cannot be undone.')}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
                 <DialogClose asChild>
                   <Button type="button" variant="secondary">
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                 </DialogClose>
                 <Button
@@ -389,7 +392,7 @@ const Snapshots: React.FC = () => {
                   onClick={() => handleDelete(snapshotToDelete)}
                   disabled={loadingSnapshots[snapshotToDelete.id]}
                 >
-                  {loadingSnapshots[snapshotToDelete.id] ? 'Deleting...' : 'Delete'}
+                  {loadingSnapshots[snapshotToDelete.id] ? translateLiteralText('Deleting...') : t('common.delete')}
                 </Button>
               </DialogFooter>
             </DialogContent>

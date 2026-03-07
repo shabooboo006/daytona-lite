@@ -6,10 +6,12 @@
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
+import { translateLiteralText } from '@/i18n/literalTranslations'
 import { formatDuration, formatTimestamp, getRelativeTimeString } from '@/lib/utils'
 import { Sandbox, SandboxState } from '@daytonaio/api-client'
 import { Archive, Play, Tag, Trash, Wrench, X } from 'lucide-react'
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { CopyButton } from './CopyButton'
 import { ResourceChip } from './ResourceChip'
 import { SandboxState as SandboxStateComponent } from './SandboxTable/SandboxState'
@@ -46,6 +48,7 @@ const SandboxDetailsSheet: React.FC<SandboxDetailsSheetProps> = ({
   deletePermitted,
   handleRecover,
 }) => {
+  const { t } = useTranslation()
   void getWebTerminalUrl
 
   if (!sandbox) return null
@@ -58,7 +61,7 @@ const SandboxDetailsSheet: React.FC<SandboxDetailsSheetProps> = ({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-dvw sm:w-[800px] p-0 flex flex-col gap-0 [&>button]:hidden">
         <SheetHeader className="space-y-0 flex flex-row justify-between items-center  p-4 px-5 border-b border-border">
-          <SheetTitle className="text-2xl font-medium">Sandbox Details</SheetTitle>
+          <SheetTitle className="text-2xl font-medium">{t('sandboxesModule.details.title')}</SheetTitle>
           <div className="flex gap-2 items-center">
             {writePermitted && (
               <>
@@ -68,7 +71,7 @@ const SandboxDetailsSheet: React.FC<SandboxDetailsSheetProps> = ({
                     onClick={() => handleStop(sandbox.id)}
                     disabled={sandboxIsLoading[sandbox.id]}
                   >
-                    Stop
+                    {t('sandboxesModule.actions.stop')}
                   </Button>
                 )}
                 {(sandbox.state === SandboxState.STOPPED || sandbox.state === SandboxState.ARCHIVED) &&
@@ -79,7 +82,7 @@ const SandboxDetailsSheet: React.FC<SandboxDetailsSheetProps> = ({
                       disabled={sandboxIsLoading[sandbox.id]}
                     >
                       <Play className="w-4 h-4" />
-                      Start
+                      {t('sandboxesModule.actions.start')}
                     </Button>
                   )}
                 {sandbox.state === SandboxState.ERROR && sandbox.recoverable && (
@@ -89,7 +92,7 @@ const SandboxDetailsSheet: React.FC<SandboxDetailsSheetProps> = ({
                     disabled={sandboxIsLoading[sandbox.id]}
                   >
                     <Wrench className="w-4 h-4" />
-                    Recover
+                    {t('sandboxesModule.actions.recover')}
                   </Button>
                 )}
                 {/* {(sandbox.state === SandboxState.STOPPED || sandbox.state === SandboxState.ARCHIVED) && (
@@ -149,24 +152,32 @@ const SandboxDetailsSheet: React.FC<SandboxDetailsSheetProps> = ({
           <TabsContent value="overview" className="flex-1 p-6 space-y-10 overflow-y-auto min-h-0">
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <h3 className="text-sm text-muted-foreground">Name</h3>
+                <h3 className="text-sm text-muted-foreground">{t('sandboxesModule.headers.name')}</h3>
                 <div className="mt-1 flex items-center gap-2">
                   <p className="text-sm font-medium truncate">{sandbox.name}</p>
-                  <CopyButton value={sandbox.name} tooltipText="Copy name" size="icon-xs" />
+                  <CopyButton
+                    value={sandbox.name}
+                    tooltipText={`${t('common.copy')} ${t('sandboxesModule.headers.name')}`}
+                    size="icon-xs"
+                  />
                 </div>
               </div>
               <div>
-                <h3 className="text-sm text-muted-foreground">UUID</h3>
+                <h3 className="text-sm text-muted-foreground">{t('sandboxesModule.headers.uuid')}</h3>
                 <div className="mt-1 flex items-center gap-2">
                   <p className="text-sm font-medium truncate">{sandbox.id}</p>
-                  <CopyButton value={sandbox.id} tooltipText="Copy UUID" size="icon-xs" />
+                  <CopyButton
+                    value={sandbox.id}
+                    tooltipText={`${t('common.copy')} ${t('sandboxesModule.headers.uuid')}`}
+                    size="icon-xs"
+                  />
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div>
-                <h3 className="text-sm text-muted-foreground">State</h3>
+                <h3 className="text-sm text-muted-foreground">{t('sandboxesModule.headers.state')}</h3>
                 <div className="mt-1 text-sm">
                   <SandboxStateComponent
                     state={sandbox.state}
@@ -176,25 +187,33 @@ const SandboxDetailsSheet: React.FC<SandboxDetailsSheetProps> = ({
                 </div>
               </div>
               <div>
-                <h3 className="text-sm text-muted-foreground">Snapshot</h3>
+                <h3 className="text-sm text-muted-foreground">{t('sandboxesModule.headers.snapshot')}</h3>
                 <div className="mt-1 flex items-center gap-2">
                   <p className="text-sm font-medium truncate">{sandbox.snapshot || '-'}</p>
                   {sandbox.snapshot && (
-                    <CopyButton value={sandbox.snapshot} tooltipText="Copy snapshot" size="icon-xs" />
+                    <CopyButton
+                      value={sandbox.snapshot}
+                      tooltipText={`${t('common.copy')} ${t('sandboxesModule.headers.snapshot')}`}
+                      size="icon-xs"
+                    />
                   )}
                 </div>
               </div>
               <div>
-                <h3 className="text-sm text-muted-foreground">Region</h3>
+                <h3 className="text-sm text-muted-foreground">{t('sandboxesModule.headers.region')}</h3>
                 <div className="mt-1 flex items-center gap-2">
                   <p className="text-sm font-medium truncate">{getRegionName(sandbox.target) ?? sandbox.target}</p>
-                  <CopyButton value={sandbox.target} tooltipText="Copy region" size="icon-xs" />
+                  <CopyButton
+                    value={sandbox.target}
+                    tooltipText={`${t('common.copy')} ${t('sandboxesModule.headers.region')}`}
+                    size="icon-xs"
+                  />
                 </div>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div>
-                <h3 className="text-sm text-muted-foreground">Last event</h3>
+                <h3 className="text-sm text-muted-foreground">{t('sandboxesModule.headers.lastEvent')}</h3>
                 <p className="mt-1 text-sm font-medium">
                   <TimestampTooltip timestamp={sandbox.updatedAt}>
                     {getLastEvent(sandbox).relativeTimeString}
@@ -202,7 +221,7 @@ const SandboxDetailsSheet: React.FC<SandboxDetailsSheetProps> = ({
                 </p>
               </div>
               <div>
-                <h3 className="text-sm text-muted-foreground">Created at</h3>
+                <h3 className="text-sm text-muted-foreground">{translateLiteralText('Created at')}</h3>
                 <p className="mt-1 text-sm font-medium">
                   <TimestampTooltip timestamp={sandbox.createdAt}>
                     {formatTimestamp(sandbox.createdAt)}
@@ -213,32 +232,32 @@ const SandboxDetailsSheet: React.FC<SandboxDetailsSheetProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div>
-                <h3 className="text-sm text-muted-foreground">Auto-stop</h3>
+                <h3 className="text-sm text-muted-foreground">{translateLiteralText('Auto-stop')}</h3>
                 <p className="mt-1 text-sm font-medium">
-                  {sandbox.autoStopInterval ? formatDuration(sandbox.autoStopInterval) : 'Disabled'}
+                  {sandbox.autoStopInterval ? formatDuration(sandbox.autoStopInterval) : t('common.disabled')}
                 </p>
               </div>
               <div>
-                <h3 className="text-sm text-muted-foreground">Auto-archive</h3>
+                <h3 className="text-sm text-muted-foreground">{translateLiteralText('Auto-archive')}</h3>
                 <p className="mt-1 text-sm font-medium">
-                  {sandbox.autoArchiveInterval ? formatDuration(sandbox.autoArchiveInterval) : 'Disabled'}
+                  {sandbox.autoArchiveInterval ? formatDuration(sandbox.autoArchiveInterval) : t('common.disabled')}
                 </p>
               </div>
               <div>
-                <h3 className="text-sm text-muted-foreground">Auto-delete</h3>
+                <h3 className="text-sm text-muted-foreground">{translateLiteralText('Auto-delete')}</h3>
                 <p className="mt-1 text-sm font-medium">
                   {sandbox.autoDeleteInterval !== undefined && sandbox.autoDeleteInterval >= 0
                     ? sandbox.autoDeleteInterval === 0
-                      ? 'On stop'
+                      ? t('sandboxesModule.details.onStop')
                       : formatDuration(sandbox.autoDeleteInterval)
-                    : 'Disabled'}
+                    : t('common.disabled')}
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1">
               <div>
-                <h3 className="text-sm text-muted-foreground">Resources</h3>
+                <h3 className="text-sm text-muted-foreground">{t('sandboxesModule.headers.resources')}</h3>
                 <div className="mt-1 text-sm font-medium flex items-center gap-1 flex-wrap">
                   <ResourceChip resource="cpu" value={sandbox.cpu} />
                   <ResourceChip resource="memory" value={sandbox.memory} />
@@ -247,7 +266,7 @@ const SandboxDetailsSheet: React.FC<SandboxDetailsSheetProps> = ({
               </div>
             </div>
             <div>
-              <h3 className="text-lg font-medium">Labels</h3>
+              <h3 className="text-lg font-medium">{t('sandboxesModule.headers.labels')}</h3>
               <div className="mt-3 space-y-4">
                 {Object.entries(sandbox.labels ?? {}).length > 0 ? (
                   Object.entries(sandbox.labels ?? {}).map(([key, value]) => (
@@ -259,13 +278,12 @@ const SandboxDetailsSheet: React.FC<SandboxDetailsSheetProps> = ({
                 ) : (
                   <div className="flex flex-col border border-border rounded-md items-center justify-center gap-2 text-muted-foreground w-full min-h-40">
                     <Tag className="w-4 h-4" />
-                    <span className="text-sm">No labels found</span>
+                    <span className="text-sm">{t('sandboxesModule.details.noLabels')}</span>
                   </div>
                 )}
               </div>
             </div>
           </TabsContent>
-
         </Tabs>
       </SheetContent>
     </Sheet>

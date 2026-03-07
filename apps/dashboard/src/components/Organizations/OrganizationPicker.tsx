@@ -14,7 +14,9 @@ import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
 import { useApi } from '@/hooks/useApi'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useSelectedOrganization } from '@/hooks/useSelectedOrganization'
+import { useI18n } from '@/i18n/useI18n'
 import { handleApiError } from '@/lib/error-handling'
+import { translateLiteralText } from '@/i18n/literalTranslations'
 import { Organization } from '@daytonaio/api-client'
 import { Building2, ChevronsUpDown, Copy, PlusCircle, SquareUserRound } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -26,6 +28,7 @@ import { CreateOrganizationDialog } from './CreateOrganizationDialog'
 function useOrganizationCommands() {
   const { organizations } = useOrganizations()
   const { selectedOrganization, onSelectOrganization } = useSelectedOrganization()
+  const { t } = useI18n()
   const [, copyToClipboard] = useCopyToClipboard()
 
   const commands: CommandConfig[] = useMemo(() => {
@@ -34,11 +37,11 @@ function useOrganizationCommands() {
     if (selectedOrganization) {
       cmds.push({
         id: 'copy-org-id',
-        label: 'Copy Organization ID',
+        label: translateLiteralText('Copy Organization ID'),
         icon: <Copy className="w-4 h-4" />,
         onSelect: () => {
           copyToClipboard(selectedOrganization.id)
-          toast.success('Organization ID copied to clipboard')
+          toast.success(translateLiteralText('Organization ID copied to clipboard'))
         },
       })
     }
@@ -50,22 +53,28 @@ function useOrganizationCommands() {
         id: `switch-org-${org.id}`,
         label: (
           <>
-            Switch to <CommandHighlight>{org.name}</CommandHighlight>
+            {translateLiteralText('Switch to')}{' '}
+            <CommandHighlight>{org.personal ? t('organizations.personal') : org.name}</CommandHighlight>
           </>
         ),
-        value: `switch to organization ${org.name}`,
+        value: `switch to organization ${org.personal ? t('organizations.personal') : org.name}`,
         icon: <Building2 className="w-4 h-4" />,
         onSelect: () => onSelectOrganization(org.id),
       })
     }
 
     return cmds
-  }, [organizations, selectedOrganization, copyToClipboard, onSelectOrganization])
+  }, [organizations, selectedOrganization, copyToClipboard, onSelectOrganization, t])
 
-  useRegisterCommands(commands, { groupId: 'organization', groupLabel: 'Organization', groupOrder: 5 })
+  useRegisterCommands(commands, {
+    groupId: 'organization',
+    groupLabel: translateLiteralText('Organization'),
+    groupOrder: 5,
+  })
 }
 
 export const OrganizationPicker: React.FC = () => {
+  const { t } = useI18n()
   const { organizationsApi } = useApi()
 
   const { organizations, refreshOrganizations } = useOrganizations()
@@ -100,13 +109,17 @@ export const OrganizationPicker: React.FC = () => {
   const handleCreateOrganization = async (name: string) => {
     try {
       const organization = (await organizationsApi.createOrganization({ name: name.trim() })).data
-      toast.success('Organization created successfully')
+      toast.success(translateLiteralText('Organization created successfully'))
       await refreshOrganizations(organization.id)
       return organization
     } catch (error) {
-      handleApiError(error, 'Failed to create organization')
+      handleApiError(error, translateLiteralText('Failed to create organization'))
       return null
     }
+  }
+
+  const getOrganizationDisplayName = (organization: Organization) => {
+    return organization.personal ? t('organizations.personal') : organization.name
   }
 
   const getOrganizationIcon = (organization: Organization) => {
@@ -140,12 +153,14 @@ export const OrganizationPicker: React.FC = () => {
           <SidebarMenuButton
             disabled={loadingSelectOrganization}
             className="outline outline-1 outline-border outline-offset-0 mb-2 bg-muted"
-            tooltip={optimisticSelectedOrganization.name}
+            tooltip={getOrganizationDisplayName(optimisticSelectedOrganization)}
           >
             <div className="w-4 h-4 flex-shrink-0 bg-black rounded-full text-white flex items-center justify-center text-[10px] font-bold">
               {optimisticSelectedOrganization.name[0].toUpperCase()}
             </div>
-            <span className="truncate text-foreground">{optimisticSelectedOrganization.name}</span>
+            <span className="truncate text-foreground">
+              {getOrganizationDisplayName(optimisticSelectedOrganization)}
+            </span>
             <ChevronsUpDown className="ml-auto w-4 h-4 opacity-50" />
           </SidebarMenuButton>
         </DropdownMenuTrigger>
@@ -158,7 +173,7 @@ export const OrganizationPicker: React.FC = () => {
                 className="cursor-pointer flex items-center gap-2"
               >
                 {getOrganizationIcon(org)}
-                <span className="truncate">{org.name}</span>
+                <span className="truncate">{getOrganizationDisplayName(org)}</span>
               </DropdownMenuItem>
             ))}
           </div>
@@ -169,7 +184,7 @@ export const OrganizationPicker: React.FC = () => {
               onClick={() => setShowCreateOrganizationDialog(true)}
             >
               <PlusCircle className="w-4 h-4 flex-shrink-0" />
-              <span>Create Organization</span>
+              <span>{t('organizations.create')}</span>
             </DropdownMenuItem>
           </div>
         </DropdownMenuContent>

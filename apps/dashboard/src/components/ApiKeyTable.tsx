@@ -19,6 +19,7 @@ import {
 } from '@tanstack/react-table'
 import { KeyRound, Loader2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Pagination } from './Pagination'
 import { TableEmptyState } from './TableEmptyState'
 import { Badge } from './ui/badge'
@@ -46,8 +47,9 @@ interface DataTableProps {
 }
 
 export function ApiKeyTable({ data, loading, isLoadingKey, onRevoke }: DataTableProps) {
+  const { t } = useTranslation()
   const [sorting, setSorting] = useState<SortingState>([])
-  const columns = getColumns({ onRevoke, isLoadingKey })
+  const columns = getColumns({ onRevoke, isLoadingKey, t })
   const table = useReactTable({
     data,
     columns,
@@ -114,11 +116,11 @@ export function ApiKeyTable({ data, loading, isLoadingKey, onRevoke }: DataTable
             ) : (
               <TableEmptyState
                 colSpan={columns.length}
-                message="No API Keys yet."
+                message={t('apiKeys.table.emptyTitle')}
                 icon={<KeyRound className="w-8 h-8" />}
                 description={
                   <div className="space-y-2">
-                    <p>API Keys authenticate requests made through the Daytona SDK or CLI.</p>
+                    <p>{t('apiKeys.table.emptyDescription')}</p>
                     <p>
                       Generate one and{' '}
                       <a
@@ -127,7 +129,7 @@ export function ApiKeyTable({ data, loading, isLoadingKey, onRevoke }: DataTable
                         rel="noopener noreferrer"
                         className="text-primary hover:underline font-medium"
                       >
-                        check out the API Key setup guide
+                        {t('apiKeys.table.emptyLink')}
                       </a>
                       .
                     </p>
@@ -138,7 +140,7 @@ export function ApiKeyTable({ data, loading, isLoadingKey, onRevoke }: DataTable
           </TableBody>
         </Table>
       </div>
-      <Pagination table={table} className="mt-4" entityName="API Keys" />
+      <Pagination table={table} className="mt-4" entityName={t('pages.apiKeys')} />
     </div>
   )
 }
@@ -170,23 +172,25 @@ const getExpiresAtColor = (expiresAt: Date | null) => {
 const getColumns = ({
   onRevoke,
   isLoadingKey,
+  t,
 }: {
   onRevoke: (key: ApiKeyList) => void
   isLoadingKey: (key: ApiKeyList) => boolean
+  t: (key: string, options?: Record<string, unknown>) => string
 }): ColumnDef<ApiKeyList>[] => {
   const columns: ColumnDef<ApiKeyList>[] = [
     {
       accessorKey: 'name',
-      header: 'Name',
+      header: t('apiKeys.table.name'),
     },
     {
       accessorKey: 'value',
-      header: 'Key',
+      header: t('apiKeys.table.key'),
     },
     {
       accessorKey: 'permissions',
       header: () => {
-        return <div className="max-w-md px-3">Permissions</div>
+        return <div className="max-w-md px-3">{t('apiKeys.table.permissions')}</div>
       },
       cell: ({ row }) => {
         return <PermissionsTooltip permissions={row.original.permissions} availablePermissions={allPermissions} />
@@ -194,7 +198,7 @@ const getColumns = ({
     },
     {
       accessorKey: 'createdAt',
-      header: 'Created',
+      header: t('apiKeys.table.created'),
       cell: ({ row }) => {
         const createdAt = row.original.createdAt
         const relativeTime = getRelativeTimeString(createdAt).relativeTimeString
@@ -214,7 +218,7 @@ const getColumns = ({
     },
     {
       accessorKey: 'lastUsedAt',
-      header: 'Last Used',
+      header: t('apiKeys.table.lastUsed'),
       cell: ({ row }) => {
         const lastUsedAt = row.original.lastUsedAt
         const relativeTime = getRelativeTimeString(lastUsedAt).relativeTimeString
@@ -239,7 +243,7 @@ const getColumns = ({
     },
     {
       accessorKey: 'expiresAt',
-      header: 'Expires',
+      header: t('apiKeys.table.expires'),
       cell: ({ row }) => {
         const expiresAt = row.original.expiresAt
         const relativeTime = getRelativeTimeString(expiresAt).relativeTimeString
@@ -272,26 +276,33 @@ const getColumns = ({
         return (
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="ghost" size={isLoading ? 'icon-sm' : 'sm'} disabled={isLoading} title="Revoke Key">
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Revoke'}
+              <Button
+                variant="ghost"
+                size={isLoading ? 'icon-sm' : 'sm'}
+                disabled={isLoading}
+                title={t('apiKeys.revokeConfirm')}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  t('common.revoke', { defaultValue: 'Revoke' })
+                )}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Confirm Key Revocation</DialogTitle>
-                <DialogDescription>
-                  Are you absolutely sure? This action cannot be undone. This will permanently delete this API key.
-                </DialogDescription>
+                <DialogTitle>{t('apiKeys.revokeConfirm')}</DialogTitle>
+                <DialogDescription>{t('apiKeys.revokeDescription')}</DialogDescription>
               </DialogHeader>
               <DialogFooter>
                 <DialogClose asChild>
                   <Button type="button" variant="secondary">
-                    Close
+                    {t('common.close')}
                   </Button>
                 </DialogClose>
                 <DialogClose asChild>
                   <Button variant="destructive" onClick={() => onRevoke(row.original)}>
-                    Revoke
+                    {t('common.revoke', { defaultValue: 'Revoke' })}
                   </Button>
                 </DialogClose>
               </DialogFooter>

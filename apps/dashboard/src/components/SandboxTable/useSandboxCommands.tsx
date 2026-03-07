@@ -3,17 +3,16 @@
  * SPDX-License-Identifier: AGPL-3.0
  */
 
-import { pluralize } from '@/lib/utils'
 import { BulkActionCounts } from '@/lib/utils/sandbox'
 import { ArchiveIcon, CheckSquare2Icon, MinusSquareIcon, PlayIcon, SquareIcon, TrashIcon } from 'lucide-react'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CommandConfig, useRegisterCommands } from '../CommandPalette'
 
 interface UseSandboxCommandsProps {
   writePermitted: boolean
   deletePermitted: boolean
   selectedCount: number
-  totalCount: number
   selectableCount: number
   toggleAllRowsSelected: (selected: boolean) => void
   bulkActionCounts: BulkActionCounts
@@ -28,7 +27,6 @@ export function useSandboxCommands({
   deletePermitted,
   selectedCount,
   selectableCount,
-  totalCount,
   toggleAllRowsSelected,
   bulkActionCounts,
   onDelete,
@@ -36,13 +34,14 @@ export function useSandboxCommands({
   onStop,
   onArchive,
 }: UseSandboxCommandsProps) {
+  const { t } = useTranslation()
   const rootCommands: CommandConfig[] = useMemo(() => {
     const commands: CommandConfig[] = []
 
     if (selectableCount !== selectedCount) {
       commands.push({
         id: 'select-all-sandboxes',
-        label: 'Select All Sandboxes',
+        label: t('sandboxesModule.commands.selectAll'),
         icon: <CheckSquare2Icon className="w-4 h-4" />,
         onSelect: () => toggleAllRowsSelected(true),
         chainable: true,
@@ -52,7 +51,7 @@ export function useSandboxCommands({
     if (selectedCount > 0) {
       commands.push({
         id: 'deselect-all-sandboxes',
-        label: 'Deselect All Sandboxes',
+        label: t('sandboxesModule.commands.deselectAll'),
         icon: <MinusSquareIcon className="w-4 h-4" />,
         onSelect: () => toggleAllRowsSelected(false),
         chainable: true,
@@ -62,7 +61,7 @@ export function useSandboxCommands({
     if (writePermitted && bulkActionCounts.startable > 0) {
       commands.push({
         id: 'start-sandboxes',
-        label: `Start ${pluralize(bulkActionCounts.startable, 'Sandbox', 'Sandboxes')}`,
+        label: t('sandboxesModule.commands.start', { count: bulkActionCounts.startable }),
         icon: <PlayIcon className="w-4 h-4" />,
         onSelect: onStart,
       })
@@ -71,7 +70,7 @@ export function useSandboxCommands({
     if (writePermitted && bulkActionCounts.stoppable > 0) {
       commands.push({
         id: 'stop-sandboxes',
-        label: `Stop ${pluralize(bulkActionCounts.stoppable, 'Sandbox', 'Sandboxes')}`,
+        label: t('sandboxesModule.commands.stop', { count: bulkActionCounts.stoppable }),
         icon: <SquareIcon className="w-4 h-4" />,
         onSelect: onStop,
       })
@@ -80,7 +79,7 @@ export function useSandboxCommands({
     if (writePermitted && bulkActionCounts.archivable > 0) {
       commands.push({
         id: 'archive-sandboxes',
-        label: `Archive ${pluralize(bulkActionCounts.archivable, 'Sandbox', 'Sandboxes')}`,
+        label: t('sandboxesModule.commands.archive', { count: bulkActionCounts.archivable }),
         icon: <ArchiveIcon className="w-4 h-4" />,
         onSelect: onArchive,
       })
@@ -89,7 +88,7 @@ export function useSandboxCommands({
     if (deletePermitted && bulkActionCounts.deletable > 0) {
       commands.push({
         id: 'delete-sandboxes',
-        label: `Delete ${pluralize(bulkActionCounts.deletable, 'Sandbox', 'Sandboxes')}`,
+        label: t('sandboxesModule.commands.delete', { count: bulkActionCounts.deletable }),
         icon: <TrashIcon className="w-4 h-4" />,
         onSelect: onDelete,
       })
@@ -103,11 +102,16 @@ export function useSandboxCommands({
     writePermitted,
     deletePermitted,
     bulkActionCounts,
+    t,
     onDelete,
     onStart,
     onStop,
     onArchive,
   ])
 
-  useRegisterCommands(rootCommands, { groupId: 'sandbox-actions', groupLabel: 'Sandbox actions', groupOrder: 0 })
+  useRegisterCommands(rootCommands, {
+    groupId: 'sandbox-actions',
+    groupLabel: t('sandboxesModule.commands.groupLabel'),
+    groupOrder: 0,
+  })
 }

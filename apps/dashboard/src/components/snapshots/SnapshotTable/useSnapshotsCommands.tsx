@@ -4,9 +4,11 @@
  */
 
 import { pluralize } from '@/lib/utils'
+import { translateLiteralText } from '@/i18n/literalTranslations'
 import { SnapshotDto, SnapshotState } from '@daytonaio/api-client'
 import { CheckSquare2Icon, MinusSquareIcon, PauseIcon, PlayIcon, PlusIcon, TrashIcon } from 'lucide-react'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CommandConfig, useRegisterCommands } from '../../CommandPalette'
 
 export interface SnapshotBulkActionCounts {
@@ -61,13 +63,14 @@ export function useSnapshotsCommands({
   onDeactivate,
   onCreateSnapshot,
 }: UseSnapshotsCommandsProps) {
+  const { t } = useTranslation()
   const rootCommands: CommandConfig[] = useMemo(() => {
     const commands: CommandConfig[] = []
 
     if (writePermitted && onCreateSnapshot) {
       commands.push({
         id: 'create-snapshot',
-        label: 'Create Snapshot',
+        label: t('snapshotsModule.create'),
         icon: <PlusIcon className="w-4 h-4" />,
         onSelect: onCreateSnapshot,
       })
@@ -76,7 +79,7 @@ export function useSnapshotsCommands({
     if (selectableCount !== selectedCount) {
       commands.push({
         id: 'select-all-snapshots',
-        label: 'Select All Snapshots',
+        label: translateLiteralText('Select All Snapshots'),
         icon: <CheckSquare2Icon className="w-4 h-4" />,
         onSelect: () => toggleAllRowsSelected(true),
         chainable: true,
@@ -86,7 +89,7 @@ export function useSnapshotsCommands({
     if (selectedCount > 0) {
       commands.push({
         id: 'deselect-all-snapshots',
-        label: 'Deselect All Snapshots',
+        label: translateLiteralText('Deselect All Snapshots'),
         icon: <MinusSquareIcon className="w-4 h-4" />,
         onSelect: () => toggleAllRowsSelected(false),
         chainable: true,
@@ -96,7 +99,7 @@ export function useSnapshotsCommands({
     if (writePermitted && bulkActionCounts.deactivatable > 0) {
       commands.push({
         id: 'deactivate-snapshots',
-        label: `Deactivate ${pluralize(bulkActionCounts.deactivatable, 'Snapshot', 'Snapshots')}`,
+        label: `${t('snapshotsModule.actions.deactivate')} ${pluralize(bulkActionCounts.deactivatable, 'Snapshot', 'Snapshots')}`,
         icon: <PauseIcon className="w-4 h-4" />,
         onSelect: onDeactivate,
       })
@@ -105,7 +108,7 @@ export function useSnapshotsCommands({
     if (writePermitted && bulkActionCounts.activatable > 0) {
       commands.push({
         id: 'activate-snapshots',
-        label: `Activate ${pluralize(bulkActionCounts.activatable, 'Snapshot', 'Snapshots')}`,
+        label: `${t('snapshotsModule.actions.activate')} ${pluralize(bulkActionCounts.activatable, 'Snapshot', 'Snapshots')}`,
         icon: <PlayIcon className="w-4 h-4" />,
         onSelect: onActivate,
       })
@@ -114,7 +117,7 @@ export function useSnapshotsCommands({
     if (deletePermitted && bulkActionCounts.deletable > 0) {
       commands.push({
         id: 'delete-snapshots',
-        label: `Delete ${pluralize(bulkActionCounts.deletable, 'Snapshot', 'Snapshots')}`,
+        label: `${t('snapshotsModule.actions.delete')} ${pluralize(bulkActionCounts.deletable, 'Snapshot', 'Snapshots')}`,
         icon: <TrashIcon className="w-4 h-4" />,
         onSelect: onDelete,
       })
@@ -132,7 +135,12 @@ export function useSnapshotsCommands({
     onDeactivate,
     onActivate,
     onCreateSnapshot,
+    t,
   ])
 
-  useRegisterCommands(rootCommands, { groupId: 'snapshot-actions', groupLabel: 'Snapshot actions', groupOrder: 0 })
+  useRegisterCommands(rootCommands, {
+    groupId: 'snapshot-actions',
+    groupLabel: translateLiteralText('Snapshot actions'),
+    groupOrder: 0,
+  })
 }

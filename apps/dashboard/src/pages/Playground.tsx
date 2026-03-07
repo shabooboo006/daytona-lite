@@ -24,13 +24,8 @@ import { PlaygroundSandboxProvider } from '@/providers/PlaygroundSandboxProvider
 import { AnimatePresence, motion } from 'framer-motion'
 import { SettingsIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useResizeObserver } from 'usehooks-ts'
-
-const playgroundCategoriesData = [
-  { value: PlaygroundCategories.SANDBOX, label: 'Sandbox' },
-  { value: PlaygroundCategories.TERMINAL, label: 'Terminal' },
-  { value: PlaygroundCategories.VNC, label: 'VNC' },
-]
 
 const SlideLeftRight = ({ children, direction }: { children: React.ReactNode; direction: 'left' | 'right' }) => {
   return (
@@ -46,7 +41,16 @@ const SlideLeftRight = ({ children, direction }: { children: React.ReactNode; di
 }
 
 const Playground: React.FC = () => {
+  const { t } = useTranslation()
   const [playgroundCategory, setPlaygroundCategory] = useState<PlaygroundCategories>(PlaygroundCategories.SANDBOX)
+  const playgroundCategoriesData = useMemo(
+    () => [
+      { value: PlaygroundCategories.SANDBOX, label: 'Sandbox' },
+      { value: PlaygroundCategories.TERMINAL, label: 'Terminal' },
+      { value: PlaygroundCategories.VNC, label: 'VNC' },
+    ],
+    [],
+  )
 
   const [drawerOpen, setDrawerOpen] = useState<PlaygroundCategories | null>(null)
   const handleDrawerOpenChange = (open: boolean) => {
@@ -90,7 +94,7 @@ const Playground: React.FC = () => {
   return (
     <PageLayout className="max-h-[100vh] overflow-auto">
       <PageHeader>
-        <PageTitle>Playground</PageTitle>
+        <PageTitle>{t('pages.playground')}</PageTitle>
       </PageHeader>
 
       <PageContent size="full" className="!p-0 h-full flex flex-col flex-1 overflow-auto" ref={pageContentRef}>

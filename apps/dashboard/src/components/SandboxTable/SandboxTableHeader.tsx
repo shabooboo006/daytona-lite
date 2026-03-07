@@ -49,12 +49,7 @@ import { ResourceFilter, ResourceFilterIndicator, ResourceFilterValue } from './
 import { SnapshotFilter, SnapshotFilterIndicator } from './filters/SnapshotFilter'
 import { StateFilter, StateFilterIndicator } from './filters/StateFilter'
 import { SandboxTableHeaderProps } from './types'
-
-const RESOURCE_FILTERS = [
-  { type: 'cpu' as const, label: 'CPU', icon: Cpu },
-  { type: 'memory' as const, label: 'Memory', icon: MemoryStick },
-  { type: 'disk' as const, label: 'Disk', icon: HardDrive },
-]
+import { useTranslation } from 'react-i18next'
 
 export function SandboxTableHeader({
   table,
@@ -67,15 +62,22 @@ export function SandboxTableHeader({
   onRefresh,
   isRefreshing = false,
 }: SandboxTableHeaderProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
   const currentSort = table.getState().sorting[0]?.id || ''
 
+  const resourceFilters = [
+    { type: 'cpu' as const, label: 'CPU', icon: Cpu },
+    { type: 'memory' as const, label: t('sandboxesModule.resourceLabels.memory'), icon: MemoryStick },
+    { type: 'disk' as const, label: t('sandboxesModule.resourceLabels.disk'), icon: HardDrive },
+  ]
+
   const sortableColumns = [
-    { id: 'name', label: 'Name' },
-    { id: 'state', label: 'State' },
-    { id: 'snapshot', label: 'Snapshot' },
-    { id: 'region', label: 'Region' },
-    { id: 'lastEvent', label: 'Last Event' },
+    { id: 'name', label: t('sandboxesModule.headers.name') },
+    { id: 'state', label: t('sandboxesModule.headers.state') },
+    { id: 'snapshot', label: t('sandboxesModule.headers.snapshot') },
+    { id: 'region', label: t('sandboxesModule.headers.region') },
+    { id: 'lastEvent', label: t('sandboxesModule.headers.lastEvent') },
   ]
 
   return (
@@ -84,20 +86,20 @@ export function SandboxTableHeader({
         <DebouncedInput
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
           onChange={(value) => table.getColumn('name')?.setFilterValue(value)}
-          placeholder="Search by Name or UUID"
+          placeholder={t('sandboxesModule.table.searchPlaceholder')}
           className="w-[240px]"
         />
 
         <Button variant="outline" onClick={onRefresh} disabled={isRefreshing} className="flex items-center gap-2">
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('sandboxesModule.table.refresh')}
         </Button>
 
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button variant="outline">
               <Columns className="w-4 h-4" />
-              View
+              {t('sandboxesModule.table.view')}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[200px] p-0">
@@ -106,11 +108,11 @@ export function SandboxTableHeader({
               getColumnLabel={(id: string) => {
                 switch (id) {
                   case 'name':
-                    return 'Name'
+                    return t('sandboxesModule.headers.name')
                   case 'id':
-                    return 'UUID'
+                    return t('sandboxesModule.headers.uuid')
                   case 'labels':
-                    return 'Labels'
+                    return t('sandboxesModule.headers.labels')
                   default:
                     return id
                 }
@@ -125,7 +127,7 @@ export function SandboxTableHeader({
               {currentSort ? (
                 <div className="flex items-center gap-2">
                   <div className="text-muted-foreground font-normal">
-                    Sorted by:{' '}
+                    {t('sandboxesModule.table.sortedBy')}{' '}
                     <span className="font-medium text-primary">
                       {sortableColumns.find((column) => column.id === currentSort)?.label}
                     </span>
@@ -134,14 +136,14 @@ export function SandboxTableHeader({
               ) : (
                 <div className="flex items-center gap-2">
                   <ArrowUpDown className="w-4 h-4" />
-                  <span>Sort</span>
+                  <span>{t('sandboxesModule.table.sort')}</span>
                 </div>
               )}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[240px] p-0" align="start">
             <Command>
-              <CommandInput placeholder="Search...">
+              <CommandInput placeholder={t('sandboxesModule.table.searchColumns')}>
                 <CommandInputButton
                   aria-expanded={open}
                   className="justify-between"
@@ -150,11 +152,11 @@ export function SandboxTableHeader({
                     setOpen(false)
                   }}
                 >
-                  Reset
+                  {t('sandboxesModule.table.reset')}
                 </CommandInputButton>
               </CommandInput>
               <CommandList>
-                <CommandEmpty>No column found.</CommandEmpty>
+                <CommandEmpty>{t('sandboxesModule.table.noColumnFound')}</CommandEmpty>
                 <CommandGroup>
                   {sortableColumns.map((column) => (
                     <CommandItem
@@ -182,14 +184,14 @@ export function SandboxTableHeader({
           <DropdownMenuTrigger asChild>
             <Button variant="outline">
               <ListFilter className="w-4 h-4" />
-              Filter
+              {t('sandboxesModule.table.filter')}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className=" w-40" align="start">
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <Square className="w-4 h-4" />
-                State
+                {t('sandboxesModule.headers.state')}
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent className="p-0 w-64">
@@ -203,7 +205,7 @@ export function SandboxTableHeader({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <Camera className="w-4 h-4" />
-                Snapshot
+                {t('sandboxesModule.headers.snapshot')}
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent className="p-0 w-64">
@@ -221,7 +223,7 @@ export function SandboxTableHeader({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <Globe className="w-4 h-4" />
-                Region
+                {t('sandboxesModule.headers.region')}
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent className="p-0 w-64">
@@ -234,7 +236,7 @@ export function SandboxTableHeader({
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>
-            {RESOURCE_FILTERS.map(({ type, label, icon: Icon }) => (
+            {resourceFilters.map(({ type, label, icon: Icon }) => (
               <DropdownMenuSub key={type}>
                 <DropdownMenuSubTrigger>
                   <Icon className="w-4 h-4" />
@@ -254,7 +256,7 @@ export function SandboxTableHeader({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <Tag className="w-4 h-4" />
-                Labels
+                {t('sandboxesModule.headers.labels')}
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent className="p-0 w-64">
@@ -268,7 +270,7 @@ export function SandboxTableHeader({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <Calendar className="w-4 h-4" />
-                Last Event
+                {t('sandboxesModule.headers.lastEvent')}
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent className="p-3 w-92">
@@ -311,7 +313,7 @@ export function SandboxTableHeader({
           />
         )}
 
-        {RESOURCE_FILTERS.map(({ type }) => {
+        {resourceFilters.map(({ type }) => {
           const resourceValue = (table.getColumn('resources')?.getFilterValue() as ResourceFilterValue)?.[type]
           return resourceValue ? (
             <ResourceFilterIndicator

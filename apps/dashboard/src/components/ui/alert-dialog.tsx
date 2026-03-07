@@ -9,6 +9,7 @@ import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog'
 import * as React from 'react'
 
 import { buttonVariants } from '@/components/ui/button'
+import { translateLiteralText, translateNode } from '@/i18n/literalTranslations'
 import { cn } from '@/lib/utils'
 import { VariantProps } from 'class-variance-authority'
 
@@ -48,7 +49,9 @@ function AlertDialogContent({ className, ...props }: React.ComponentProps<typeof
           className,
         )}
         {...props}
-      />
+      >
+        {translateNode(props.children)}
+      </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   )
 }
@@ -79,7 +82,9 @@ function AlertDialogTitle({ className, ...props }: React.ComponentProps<typeof A
       data-slot="alert-dialog-title"
       className={cn('text-lg font-semibold', className)}
       {...props}
-    />
+    >
+      {typeof props.children === 'string' ? translateLiteralText(props.children) : props.children}
+    </AlertDialogPrimitive.Title>
   )
 }
 
@@ -92,7 +97,9 @@ function AlertDialogDescription({
       data-slot="alert-dialog-description"
       className={cn('text-muted-foreground text-sm', className)}
       {...props}
-    />
+    >
+      {typeof props.children === 'string' ? translateLiteralText(props.children) : props.children}
+    </AlertDialogPrimitive.Description>
   )
 }
 

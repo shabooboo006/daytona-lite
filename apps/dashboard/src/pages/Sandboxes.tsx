@@ -22,9 +22,9 @@ import { DAYTONA_DOCS_URL } from '@/constants/ExternalLinks'
 import { DEFAULT_PAGE_SIZE } from '@/constants/Pagination'
 import { LocalStorageKey } from '@/enums/LocalStorageKey'
 import { RoutePath } from '@/enums/RoutePath'
+import { translateLiteralText } from '@/i18n/literalTranslations'
 import { SnapshotFilters, SnapshotQueryParams, useSnapshotsQuery } from '@/hooks/queries/useSnapshotsQuery'
 import { useApi } from '@/hooks/useApi'
-import { useConfig } from '@/hooks/useConfig'
 import { useNotificationSocket } from '@/hooks/useNotificationSocket'
 import { useRegions } from '@/hooks/useRegions'
 import {
@@ -39,7 +39,7 @@ import { useSelectedOrganization } from '@/hooks/useSelectedOrganization'
 import { createBulkActionToast } from '@/lib/bulk-action-toast'
 import { handleApiError } from '@/lib/error-handling'
 import { getLocalStorageItem, setLocalStorageItem } from '@/lib/local-storage'
-import { formatDuration, pluralize } from '@/lib/utils'
+import { formatDuration } from '@/lib/utils'
 import {
   OrganizationUserRoleEnum,
   Sandbox,
@@ -53,13 +53,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 const Sandboxes: React.FC = () => {
+  const { t } = useTranslation()
   const { sandboxApi, apiKeyApi, toolboxApi } = useApi()
   const { user } = useAuth()
   const navigate = useNavigate()
   const { notificationSocket } = useNotificationSocket()
-  const config = useConfig()
   const queryClient = useQueryClient()
   const { selectedOrganization, authenticatedUserOrganizationMember } = useSelectedOrganization()
 
@@ -123,9 +124,9 @@ const Sandboxes: React.FC = () => {
 
   useEffect(() => {
     if (sandboxesDataError) {
-      handleApiError(sandboxesDataError, 'Failed to fetch sandboxes')
+      handleApiError(sandboxesDataError, translateLiteralText('Failed to fetch sandboxes'))
     }
-  }, [sandboxesDataError])
+  }, [sandboxesDataError, t])
 
   const updateSandboxInCache = useCallback(
     (sandboxId: string, updates: Partial<Sandbox>) => {
@@ -198,11 +199,11 @@ const Sandboxes: React.FC = () => {
     try {
       await refetchSandboxesData()
     } catch (error) {
-      handleApiError(error, 'Failed to refresh sandboxes')
+      handleApiError(error, translateLiteralText('Failed to refresh sandboxes'))
     } finally {
       setSandboxDataIsRefreshing(false)
     }
-  }, [refetchSandboxesData])
+  }, [refetchSandboxesData, t])
 
   // Delete Sandbox Dialog
 
@@ -297,9 +298,9 @@ const Sandboxes: React.FC = () => {
 
   useEffect(() => {
     if (snapshotsDataError) {
-      handleApiError(snapshotsDataError, 'Failed to fetch snapshots')
+      handleApiError(snapshotsDataError, translateLiteralText('Failed to fetch snapshots'))
     }
-  }, [snapshotsDataError])
+  }, [snapshotsDataError, t])
 
   // Region Filter
 
@@ -308,7 +309,7 @@ const Sandboxes: React.FC = () => {
   // Subscribe to Sandbox Events
 
   useEffect(() => {
-    const handleSandboxCreatedEvent = (sandbox: Sandbox) => {
+    const handleSandboxCreatedEvent = () => {
       const isFirstPage = paginationParams.pageIndex === 0
       const isDefaultFilters = Object.keys(filters).length === 0
       const isDefaultSorting =
@@ -326,7 +327,7 @@ const Sandboxes: React.FC = () => {
     }) => {
       // warm pool sandboxes
       if (data.oldState === data.newState && data.newState === SandboxState.STARTED) {
-        handleSandboxCreatedEvent(data.sandbox)
+        handleSandboxCreatedEvent()
         return
       }
 
@@ -402,10 +403,10 @@ const Sandboxes: React.FC = () => {
 
     try {
       await sandboxApi.startSandbox(id, selectedOrganization?.id)
-      toast.success(`Starting sandbox with ID: ${id}`)
+      toast.success(t('sandboxesModule.toasts.starting', { id }))
       await markAllSandboxQueriesAsStale()
     } catch (error) {
-      handleApiError(error, 'Failed to start sandbox')
+      handleApiError(error, translateLiteralText('Failed to start sandbox'))
       revertSandboxStateOptimisticUpdate(id, previousState)
     } finally {
       setSandboxIsLoading((prev) => ({ ...prev, [id]: false }))
@@ -427,10 +428,10 @@ const Sandboxes: React.FC = () => {
 
     try {
       await sandboxApi.recoverSandbox(id, selectedOrganization?.id)
-      toast.success('Sandbox recovered. Restarting...')
+      toast.success(t('sandboxesModule.toasts.recoveredRestarting'))
       await markAllSandboxQueriesAsStale()
     } catch (error) {
-      handleApiError(error, 'Failed to recover sandbox')
+      handleApiError(error, translateLiteralText('Failed to recover sandbox'))
       revertSandboxStateOptimisticUpdate(id, previousState)
     } finally {
       setSandboxIsLoading((prev) => ({ ...prev, [id]: false }))
@@ -453,16 +454,21 @@ const Sandboxes: React.FC = () => {
     try {
       await sandboxApi.stopSandbox(id, selectedOrganization?.id)
       toast.success(
-        `Stopping sandbox with ID: ${id}`,
+        t('sandboxesModule.toasts.stopping', { id }),
         sandboxToStop?.autoDeleteInterval !== undefined && sandboxToStop.autoDeleteInterval >= 0
           ? {
-              description: `This sandbox will be deleted automatically ${sandboxToStop.autoDeleteInterval === 0 ? 'upon stopping' : `in ${formatDuration(sandboxToStop.autoDeleteInterval)} unless it is started again`}.`,
+              description:
+                sandboxToStop.autoDeleteInterval === 0
+                  ? t('sandboxesModule.toasts.autoDeleteUponStopping')
+                  : t('sandboxesModule.toasts.autoDeleteIn', {
+                      duration: formatDuration(sandboxToStop.autoDeleteInterval),
+                    }),
             }
           : undefined,
       )
       await markAllSandboxQueriesAsStale()
     } catch (error) {
-      handleApiError(error, 'Failed to stop sandbox')
+      handleApiError(error, translateLiteralText('Failed to stop sandbox'))
       revertSandboxStateOptimisticUpdate(id, previousState)
     } finally {
       setSandboxIsLoading((prev) => ({ ...prev, [id]: false }))
@@ -492,11 +498,11 @@ const Sandboxes: React.FC = () => {
         setSelectedSandbox(null)
       }
 
-      toast.success(`Deleting sandbox with ID:  ${id}`)
+      toast.success(t('sandboxesModule.toasts.deleting', { id }))
 
       await markAllSandboxQueriesAsStale()
     } catch (error) {
-      handleApiError(error, 'Failed to delete sandbox')
+      handleApiError(error, translateLiteralText('Failed to delete sandbox'))
       revertSandboxStateOptimisticUpdate(id, previousState)
     } finally {
       setSandboxIsLoading((prev) => ({ ...prev, [id]: false }))
@@ -518,10 +524,10 @@ const Sandboxes: React.FC = () => {
 
     try {
       await sandboxApi.archiveSandbox(id, selectedOrganization?.id)
-      toast.success(`Archiving sandbox with ID: ${id}`)
+      toast.success(t('sandboxesModule.toasts.archiving', { id }))
       await markAllSandboxQueriesAsStale()
     } catch (error) {
-      handleApiError(error, 'Failed to archive sandbox')
+      handleApiError(error, translateLiteralText('Failed to archive sandbox'))
       revertSandboxStateOptimisticUpdate(id, previousState)
     } finally {
       setSandboxIsLoading((prev) => ({ ...prev, [id]: false }))
@@ -560,23 +566,37 @@ const Sandboxes: React.FC = () => {
       let successCount = 0
       let failureCount = 0
 
-      const totalLabel = pluralize(ids.length, 'sandbox', 'sandboxes')
+      const totalLabel = t('sandboxesModule.bulk.selectionTarget', { count: ids.length })
       const onCancel = () => {
         isCancelled = true
       }
 
-      const bulkToast = createBulkActionToast(`${actionName} 0 of ${totalLabel}.`, {
-        action: { label: 'Cancel', onClick: onCancel },
-      })
+      const bulkToast = createBulkActionToast(
+        t('sandboxesModule.bulk.progress', {
+          action: actionName,
+          processed: 0,
+          total: totalLabel,
+        }),
+        {
+          action: { label: t('sandboxesModule.bulk.cancel'), onClick: onCancel },
+        },
+      )
 
       try {
         for (const id of ids) {
           if (isCancelled) break
 
           processedCount += 1
-          bulkToast.loading(`${actionName} ${processedCount} of ${totalLabel}.`, {
-            action: { label: 'Cancel', onClick: onCancel },
-          })
+          bulkToast.loading(
+            t('sandboxesModule.bulk.progress', {
+              action: actionName,
+              processed: processedCount,
+              total: totalLabel,
+            }),
+            {
+              action: { label: t('sandboxesModule.bulk.cancel'), onClick: onCancel },
+            },
+          )
 
           setSandboxIsLoading((prev) => ({ ...prev, [id]: true }))
           setSandboxStateIsTransitioning((prev) => ({ ...prev, [id]: true }))
@@ -598,10 +618,16 @@ const Sandboxes: React.FC = () => {
         }
 
         await markAllSandboxQueriesAsStale()
-        bulkToast.result({ successCount, failureCount }, toastMessages)
+        bulkToast.result(
+          { successCount, failureCount },
+          {
+            ...toastMessages,
+            partialDescription: t('sandboxesModule.bulk.partialDescription', { successCount, failureCount }),
+          },
+        )
       } catch (error) {
         console.error(`${actionName} sandboxes failed`, error)
-        bulkToast.error(`${actionName} sandboxes failed.`)
+        bulkToast.error(t('sandboxesModule.bulk.allFailed', { action: actionName }))
       }
 
       return { successCount, failureCount }
@@ -613,48 +639,49 @@ const Sandboxes: React.FC = () => {
       performSandboxStateOptimisticUpdate,
       revertSandboxStateOptimisticUpdate,
       markAllSandboxQueriesAsStale,
+      t,
     ],
   )
 
   const handleBulkStart = (ids: string[]) =>
     executeBulkAction({
       ids,
-      actionName: 'Starting',
+      actionName: t('sandboxesModule.states.starting'),
       optimisticState: SandboxState.STARTING,
       apiCall: (id) => sandboxApi.startSandbox(id, selectedOrganization?.id),
       toastMessages: {
-        successTitle: `${pluralize(ids.length, 'sandbox', 'sandboxes')} started.`,
-        errorTitle: `Failed to start ${pluralize(ids.length, 'sandbox', 'sandboxes')}.`,
-        warningTitle: 'Failed to start some sandboxes.',
-        canceledTitle: 'Start canceled.',
+        successTitle: t('sandboxesModule.bulk.startSuccess', { count: ids.length }),
+        errorTitle: t('sandboxesModule.bulk.startError', { count: ids.length }),
+        warningTitle: t('sandboxesModule.bulk.startWarning'),
+        canceledTitle: t('sandboxesModule.bulk.startCanceled'),
       },
     })
 
   const handleBulkStop = (ids: string[]) =>
     executeBulkAction({
       ids,
-      actionName: 'Stopping',
+      actionName: t('sandboxesModule.states.stopping'),
       optimisticState: SandboxState.STOPPING,
       apiCall: (id) => sandboxApi.stopSandbox(id, selectedOrganization?.id),
       toastMessages: {
-        successTitle: `${pluralize(ids.length, 'sandbox', 'sandboxes')} stopped.`,
-        errorTitle: `Failed to stop ${pluralize(ids.length, 'sandbox', 'sandboxes')}.`,
-        warningTitle: 'Failed to stop some sandboxes.',
-        canceledTitle: 'Stop canceled.',
+        successTitle: t('sandboxesModule.bulk.stopSuccess', { count: ids.length }),
+        errorTitle: t('sandboxesModule.bulk.stopError', { count: ids.length }),
+        warningTitle: t('sandboxesModule.bulk.stopWarning'),
+        canceledTitle: t('sandboxesModule.bulk.stopCanceled'),
       },
     })
 
   const handleBulkArchive = (ids: string[]) =>
     executeBulkAction({
       ids,
-      actionName: 'Archiving',
+      actionName: t('sandboxesModule.states.archiving'),
       optimisticState: SandboxState.ARCHIVING,
       apiCall: (id) => sandboxApi.archiveSandbox(id, selectedOrganization?.id),
       toastMessages: {
-        successTitle: `${pluralize(ids.length, 'sandbox', 'sandboxes')} archived.`,
-        errorTitle: `Failed to archive ${pluralize(ids.length, 'sandbox', 'sandboxes')}.`,
-        warningTitle: 'Failed to archive some sandboxes.',
-        canceledTitle: 'Archive canceled.',
+        successTitle: t('sandboxesModule.bulk.archiveSuccess', { count: ids.length }),
+        errorTitle: t('sandboxesModule.bulk.archiveError', { count: ids.length }),
+        warningTitle: t('sandboxesModule.bulk.archiveWarning'),
+        canceledTitle: t('sandboxesModule.bulk.archiveCanceled'),
       },
     })
 
@@ -663,14 +690,14 @@ const Sandboxes: React.FC = () => {
 
     await executeBulkAction({
       ids,
-      actionName: 'Deleting',
+      actionName: t('sandboxesModule.states.destroying'),
       optimisticState: SandboxState.DESTROYING,
       apiCall: (id) => sandboxApi.deleteSandbox(id, selectedOrganization?.id),
       toastMessages: {
-        successTitle: `${pluralize(ids.length, 'sandbox', 'sandboxes')} deleted.`,
-        errorTitle: `Failed to delete ${pluralize(ids.length, 'sandbox', 'sandboxes')}.`,
-        warningTitle: 'Failed to delete some sandboxes.',
-        canceledTitle: 'Delete canceled.',
+        successTitle: t('sandboxesModule.bulk.deleteSuccess', { count: ids.length }),
+        errorTitle: t('sandboxesModule.bulk.deleteError', { count: ids.length }),
+        warningTitle: t('sandboxesModule.bulk.deleteWarning'),
+        canceledTitle: t('sandboxesModule.bulk.deleteCanceled'),
       },
     })
 
@@ -697,7 +724,7 @@ const Sandboxes: React.FC = () => {
       const portPreviewUrl = await getPortPreviewUrl(sandboxId, 6080)
       return portPreviewUrl + '/vnc.html'
     } catch (error) {
-      handleApiError(error, 'Failed to construct VNC URL')
+      handleApiError(error, translateLiteralText('Failed to construct VNC URL'))
       return null
     }
   }
@@ -706,7 +733,7 @@ const Sandboxes: React.FC = () => {
     setSandboxIsLoading((prev) => ({ ...prev, [id]: true }))
 
     // Notify user immediately that we're checking VNC status
-    toast.info('Checking VNC desktop status...')
+    toast.info(t('sandboxesModule.toasts.checkingVncDesktopStatus'))
 
     try {
       // First, check if computer use is already started
@@ -718,13 +745,13 @@ const Sandboxes: React.FC = () => {
         const vncUrl = await getVncUrl(id)
         if (vncUrl) {
           window.open(vncUrl, '_blank')
-          toast.success('Opening VNC desktop...')
+          toast.success(t('sandboxesModule.toasts.openingVncDesktop'))
         }
       } else {
         // Computer use is not active, try to start it
         try {
           await toolboxApi.startComputerUseDeprecated(id, selectedOrganization?.id)
-          toast.success('Starting VNC desktop...')
+          toast.success(t('sandboxesModule.toasts.startingVncDesktop'))
 
           // Wait a moment for processes to start, then open VNC
           await new Promise((resolve) => setTimeout(resolve, 5000))
@@ -738,29 +765,29 @@ const Sandboxes: React.FC = () => {
 
               if (vncUrl) {
                 window.open(vncUrl, '_blank')
-                toast.success('VNC desktop is ready!', {
+                toast.success(t('sandboxesModule.toasts.vncDesktopReady'), {
                   action: (
                     <Button variant="secondary" onClick={() => window.open(vncUrl, '_blank')}>
-                      Open in new tab
+                      {t('sandboxesModule.toasts.openInNewTab')}
                     </Button>
                   ),
                 })
               }
             } else {
-              toast.error(`VNC desktop failed to start. Status: ${newStatus}`)
+              toast.error(t('sandboxesModule.toasts.vncDesktopFailedToStart', { status: newStatus }))
             }
           } catch (error) {
-            handleApiError(error, 'Failed to check VNC status after start')
+            handleApiError(error, translateLiteralText('Failed to check VNC status after start'))
           }
         } catch (startError: any) {
           // Check if this is a computer-use availability error
           const errorMessage = startError?.response?.data?.message || startError?.message || String(startError)
 
           if (errorMessage === 'Computer-use functionality is not available') {
-            toast.error('Computer-use functionality is not available', {
+            toast.error(t('sandboxesModule.toasts.computerUseUnavailable'), {
               description: (
                 <div>
-                  <div>Computer-use dependencies are missing in the runtime environment.</div>
+                  <div>{t('sandboxesModule.toasts.computerUseMissingDependencies')}</div>
                   <div className="mt-2">
                     <a
                       href={`${DAYTONA_DOCS_URL}/getting-started/computer-use`}
@@ -768,19 +795,19 @@ const Sandboxes: React.FC = () => {
                       rel="noopener noreferrer"
                       className="text-primary hover:underline"
                     >
-                      See documentation on how to configure the runtime for computer-use
+                      {t('sandboxesModule.toasts.computerUseDocs')}
                     </a>
                   </div>
                 </div>
               ),
             })
           } else {
-            handleApiError(startError, 'Failed to start VNC desktop')
+            handleApiError(startError, translateLiteralText('Failed to start VNC desktop'))
           }
         }
       }
     } catch (error) {
-      handleApiError(error, 'Failed to check VNC status')
+      handleApiError(error, translateLiteralText('Failed to check VNC status'))
     } finally {
       setSandboxIsLoading((prev) => ({ ...prev, [id]: false }))
     }
@@ -791,18 +818,18 @@ const Sandboxes: React.FC = () => {
       try {
         return await getPortPreviewUrl(sandboxId, 22222)
       } catch (error) {
-        handleApiError(error, 'Failed to construct web terminal URL')
+        handleApiError(error, translateLiteralText('Failed to construct web terminal URL'))
         return null
       }
     },
-    [getPortPreviewUrl],
+    [getPortPreviewUrl, t],
   )
 
   const handleScreenRecordings = async (id: string) => {
     // Check if sandbox is started
     const sandbox = sandboxesData?.items?.find((s) => s.id === id)
     if (!sandbox || sandbox.state !== SandboxState.STARTED) {
-      toast.error('Sandbox must be started to access Screen Recordings')
+      toast.error(t('sandboxesModule.toasts.screenRecordingsRequiresStarted'))
       return
     }
 
@@ -810,9 +837,9 @@ const Sandboxes: React.FC = () => {
     try {
       const portPreviewUrl = await getPortPreviewUrl(id, 33333)
       window.open(portPreviewUrl, '_blank')
-      toast.success('Opening Screen Recordings dashboard...')
+      toast.success(t('sandboxesModule.toasts.openingScreenRecordings'))
     } catch (error) {
-      handleApiError(error, 'Failed to open Screen Recordings')
+      handleApiError(error, translateLiteralText('Failed to open Screen Recordings'))
     } finally {
       setSandboxIsLoading((prev) => ({ ...prev, [id]: false }))
     }
@@ -825,9 +852,9 @@ const Sandboxes: React.FC = () => {
       setSshAccess(response.data)
       setSshSandboxId(id)
       setShowCreateSshDialog(true)
-      toast.success('SSH access created successfully')
+      toast.success(t('sandboxesModule.toasts.sshAccessCreated'))
     } catch (error) {
-      handleApiError(error, 'Failed to create SSH access')
+      handleApiError(error, translateLiteralText('Failed to create SSH access'))
     } finally {
       setSandboxIsLoading((prev) => ({ ...prev, [id]: false }))
     }
@@ -840,7 +867,7 @@ const Sandboxes: React.FC = () => {
 
   const handleRevokeSshAccess = async (id: string) => {
     if (!revokeSshToken.trim()) {
-      toast.error('Please enter a token to revoke')
+      toast.error(t('sandboxesModule.toasts.enterTokenToRevoke'))
       return
     }
 
@@ -850,9 +877,9 @@ const Sandboxes: React.FC = () => {
       setRevokeSshToken('')
       setSshSandboxId('')
       setShowRevokeSshDialog(false)
-      toast.success('SSH access revoked successfully')
+      toast.success(t('sandboxesModule.toasts.sshAccessRevoked'))
     } catch (error) {
-      handleApiError(error, 'Failed to revoke SSH access')
+      handleApiError(error, translateLiteralText('Failed to revoke SSH access'))
     } finally {
       setSandboxIsLoading((prev) => ({ ...prev, [id]: false }))
     }
@@ -869,7 +896,7 @@ const Sandboxes: React.FC = () => {
       setCopied(label)
       setTimeout(() => setCopied(null), 2000)
     } catch (err) {
-      console.error('Failed to copy text:', err)
+      console.error(t('sandboxesModule.toasts.failedToCopyText'), err)
     }
   }
 
@@ -898,7 +925,7 @@ const Sandboxes: React.FC = () => {
           setLocalStorageItem(skipOnboardingKey, 'true')
         }
       } catch (error) {
-        console.error('Failed to check if user needs onboarding', error)
+        console.error(t('sandboxesModule.toasts.failedToCheckOnboarding'), error)
       }
     }
 
@@ -908,19 +935,7 @@ const Sandboxes: React.FC = () => {
   return (
     <PageLayout>
       <PageHeader>
-        <PageTitle>Sandboxes</PageTitle>
-        {!sandboxesDataIsLoading && (!sandboxesData?.items || sandboxesData.items.length === 0) && (
-          <div className="flex items-center gap-2 ml-auto">
-            <Button variant="link" className="text-primary" onClick={() => navigate(RoutePath.ONBOARDING)} size="sm">
-              Onboarding guide
-            </Button>
-            <Button variant="link" className="text-primary" asChild size="sm">
-              <a href={DAYTONA_DOCS_URL} target="_blank" rel="noopener noreferrer" className="text-primary">
-                Docs
-              </a>
-            </Button>
-          </div>
-        )}
+        <PageTitle>{t('sandboxesModule.title')}</PageTitle>
       </PageHeader>
       <PageContent size="full" className="flex-1 max-h-[calc(100vh-65px)]">
         <SandboxTable
@@ -983,19 +998,17 @@ const Sandboxes: React.FC = () => {
           >
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Confirm Sandbox Deletion</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete this sandbox? This action cannot be undone.
-                </AlertDialogDescription>
+                <AlertDialogTitle>{t('sandboxesModule.dialogs.confirmDeleteTitle')}</AlertDialogTitle>
+                <AlertDialogDescription>{t('sandboxesModule.dialogs.confirmDeleteDescription')}</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                 <AlertDialogAction
                   variant="destructive"
                   onClick={() => handleDelete(sandboxToDelete)}
                   disabled={sandboxIsLoading[sandboxToDelete]}
                 >
-                  {sandboxIsLoading[sandboxToDelete] ? 'Deleting...' : 'Delete'}
+                  {sandboxIsLoading[sandboxToDelete] ? t('sandboxesModule.dialogs.deleting') : t('common.delete')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -1016,17 +1029,17 @@ const Sandboxes: React.FC = () => {
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Create SSH Access</AlertDialogTitle>
+              <AlertDialogTitle>{t('sandboxesModule.actions.createSshAccess')}</AlertDialogTitle>
               <AlertDialogDescription>
                 {sshAccess
-                  ? 'SSH access has been created successfully. Use the token below to connect:'
-                  : 'Set the expiration time for SSH access:'}
+                  ? t('sandboxesModule.dialogs.createSshDescriptionReady')
+                  : t('sandboxesModule.dialogs.createSshDescriptionPending')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div className="space-y-4">
               {!sshAccess ? (
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">Expiry (minutes):</Label>
+                  <Label className="text-sm font-medium">{t('Expiry (minutes):')}</Label>
                   <input
                     type="number"
                     min="1"
@@ -1051,13 +1064,13 @@ const Sandboxes: React.FC = () => {
             <AlertDialogFooter>
               {!sshAccess ? (
                 <>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={() => handleCreateSshAccess(sshSandboxId)}
                     disabled={!sshSandboxId}
                     className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
                   >
-                    Create
+                    {t('common.create')}
                   </AlertDialogAction>
                 </>
               ) : (
@@ -1065,7 +1078,7 @@ const Sandboxes: React.FC = () => {
                   onClick={() => setShowCreateSshDialog(false)}
                   className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
                 >
-                  Close
+                  {t('common.close')}
                 </AlertDialogAction>
               )}
             </AlertDialogFooter>
@@ -1085,29 +1098,29 @@ const Sandboxes: React.FC = () => {
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Revoke SSH Access</AlertDialogTitle>
-              <AlertDialogDescription>Enter the SSH access token you want to revoke:</AlertDialogDescription>
+              <AlertDialogTitle>{t('sandboxesModule.actions.revokeSshAccess')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('sandboxesModule.dialogs.revokeSshDescription')}</AlertDialogDescription>
             </AlertDialogHeader>
             <div className="space-y-4">
               <div className="space-y-3">
-                <label className="text-sm font-medium">SSH Token:</label>
+                <label className="text-sm font-medium">{t('SSH Token:')}</label>
                 <input
                   type="text"
                   value={revokeSshToken}
                   onChange={(e) => setRevokeSshToken(e.target.value)}
-                  placeholder="Enter SSH token to revoke"
+                  placeholder={t('sandboxesModule.dialogs.sshTokenPlaceholder')}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => handleRevokeSshAccess(sshSandboxId)}
                 disabled={!revokeSshToken.trim() || !sshSandboxId}
                 className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
               >
-                Revoke Access
+                {t('sandboxesModule.actions.revokeAccess')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

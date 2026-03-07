@@ -15,6 +15,7 @@ import {
 } from '../ui/dropdown-menu'
 import { SandboxTableActionsProps } from './types'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export function SandboxTableActions({
   sandbox,
@@ -32,6 +33,7 @@ export function SandboxTableActions({
   onRecover,
   onScreenRecordings,
 }: SandboxTableActionsProps) {
+  const { t } = useTranslation()
   const menuItems = useMemo(() => {
     const items = []
 
@@ -39,33 +41,33 @@ export function SandboxTableActions({
       if (sandbox.state === SandboxState.STARTED) {
         items.push({
           key: 'vnc',
-          label: 'VNC',
+          label: t('sandboxesModule.actions.vnc'),
           onClick: () => onVnc(sandbox.id),
           disabled: isLoading,
         })
         items.push({
           key: 'screen-recordings',
-          label: 'Screen Recordings',
+          label: t('sandboxesModule.actions.screenRecordings'),
           onClick: () => onScreenRecordings(sandbox.id),
           disabled: isLoading,
         })
         items.push({
           key: 'stop',
-          label: 'Stop',
+          label: t('sandboxesModule.actions.stop'),
           onClick: () => onStop(sandbox.id),
           disabled: isLoading,
         })
       } else if (sandbox.state === SandboxState.STOPPED || sandbox.state === SandboxState.ARCHIVED) {
         items.push({
           key: 'start',
-          label: 'Start',
+          label: t('sandboxesModule.actions.start'),
           onClick: () => onStart(sandbox.id),
           disabled: isLoading,
         })
       } else if (sandbox.state === SandboxState.ERROR && sandbox.recoverable) {
         items.push({
           key: 'recover',
-          label: 'Recover',
+          label: t('sandboxesModule.actions.recover'),
           onClick: () => onRecover(sandbox.id),
           disabled: isLoading,
         })
@@ -74,7 +76,7 @@ export function SandboxTableActions({
       if (sandbox.state === SandboxState.STOPPED) {
         items.push({
           key: 'archive',
-          label: 'Archive',
+          label: t('sandboxesModule.actions.archive'),
           onClick: () => onArchive(sandbox.id),
           disabled: isLoading,
         })
@@ -83,13 +85,13 @@ export function SandboxTableActions({
       // Add SSH access options
       items.push({
         key: 'create-ssh',
-        label: 'Create SSH Access',
+        label: t('sandboxesModule.actions.createSshAccess'),
         onClick: () => onCreateSshAccess(sandbox.id),
         disabled: isLoading,
       })
       items.push({
         key: 'revoke-ssh',
-        label: 'Revoke SSH Access',
+        label: t('sandboxesModule.actions.revokeSshAccess'),
         onClick: () => onRevokeSshAccess(sandbox.id),
         disabled: isLoading,
       })
@@ -102,7 +104,7 @@ export function SandboxTableActions({
 
       items.push({
         key: 'delete',
-        label: 'Delete',
+        label: t('sandboxesModule.actions.delete'),
         onClick: () => onDelete(sandbox.id),
         disabled: isLoading,
         className: 'text-red-600 dark:text-red-400',
@@ -122,6 +124,7 @@ export function SandboxTableActions({
     onDelete,
     onArchive,
     onVnc,
+    t,
     onCreateSshAccess,
     onRevokeSshAccess,
     onRecover,
@@ -176,7 +179,7 @@ export function SandboxTableActions({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="h-7 w-7 p-0 text-muted-foreground">
-            <span className="sr-only">Open menu</span>
+            <span className="sr-only">{t('common.openMenu')}</span>
             <MoreVertical />
           </Button>
         </DropdownMenuTrigger>

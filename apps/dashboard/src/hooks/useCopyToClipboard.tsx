@@ -6,17 +6,19 @@
 'use client'
 
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 type CopyFn = (text: string) => Promise<boolean>
 
 export function useCopyToClipboard({ timeout = 2000 }: { timeout?: number } = {}): [string | null, CopyFn] {
   const [copiedText, setCopiedText] = useState<string | null>(null)
+  const { t } = useTranslation()
 
   const copy: CopyFn = useCallback(
     async (text) => {
       if (!navigator?.clipboard) {
-        toast.error('Clipboard not supported')
+        toast.error(t('common.clipboardUnsupported'))
         return false
       }
 
@@ -36,12 +38,12 @@ export function useCopyToClipboard({ timeout = 2000 }: { timeout?: number } = {}
         console.error('Failed to copy to clipboard', error)
         setCopiedText(null)
 
-        toast.error('Failed to copy to clipboard')
+        toast.error(t('common.failedToCopyToClipboard'))
 
         return false
       }
     },
-    [timeout],
+    [t, timeout],
   )
 
   return [copiedText, copy]

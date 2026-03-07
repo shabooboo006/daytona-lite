@@ -16,6 +16,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { liteClient as algoliasearch } from 'algoliasearch/lite'
 import { BookOpen, Code2, Container, Layers, Terminal } from 'lucide-react'
 import { ReactNode, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const ALGOLIA_APP_ID = import.meta.env.VITE_ALGOLIA_APP_ID
 const ALGOLIA_API_KEY = import.meta.env.VITE_ALGOLIA_API_KEY
@@ -151,6 +152,7 @@ const handleSelect = (hit: AlgoliaHit) => {
 }
 
 export function useDocsSearchCommands() {
+  const { t } = useTranslation()
   const activePageId = useCommandPalette((state) => state.activePageId)
   const search = useCommandPalette((state) => state.searchByPage.get('search-docs') ?? '')
 
@@ -163,7 +165,11 @@ export function useDocsSearchCommands() {
     enabled,
   })
 
-  useRegisterPage({ id: 'search-docs', label: 'Search Docs', placeholder: 'Search documentation...' })
+  useRegisterPage({
+    id: 'search-docs',
+    label: t('commandPalette.commands.searchDocs'),
+    placeholder: t('commandPalette.errors.searchDocsPlaceholder'),
+  })
 
   useEffect(() => {
     if (!enabled) {
@@ -185,27 +191,27 @@ export function useDocsSearchCommands() {
       return [
         {
           id: 'suggestion-quickstart',
-          label: 'Quick Start',
+          label: t('commandPalette.errors.quickStart'),
           icon: <BookOpen className="w-4 h-4" />,
           onSelect: () => openDocs(),
           chainable: true,
         },
         {
           id: 'suggestion-sandboxes',
-          label: 'Sandboxes',
+          label: t('commandPalette.errors.sandboxes'),
           icon: <Container className="w-4 h-4" />,
           onSelect: () => openDocs('/en/sandboxes'),
         },
         {
           id: 'suggestion-snapshots',
-          label: 'Snapshots',
+          label: t('commandPalette.errors.snapshots'),
           icon: <Layers className="w-4 h-4" />,
           onSelect: () => openDocs('/en/snapshots'),
           chainable: true,
         },
         {
           id: 'suggestion-limits',
-          label: 'Limits',
+          label: t('commandPalette.errors.limits'),
           icon: <Terminal className="w-4 h-4" />,
           onSelect: () => openDocs('/en/limits'),
           chainable: true,
@@ -217,7 +223,7 @@ export function useDocsSearchCommands() {
       return [
         {
           id: 'error',
-          label: 'Failed to load documentation. Try again.',
+          label: t('commandPalette.errors.loadDocs'),
           disabled: true,
         },
       ]
@@ -232,7 +238,7 @@ export function useDocsSearchCommands() {
       chainable: true,
       className: 'py-2',
     }))
-  }, [search, data, isError])
+  }, [data, isError, search, t])
 
   const cliCommands: CommandConfig[] = useMemo(() => {
     if (!search || !data) {
@@ -274,7 +280,11 @@ export function useDocsSearchCommands() {
   useRegisterCommands(docsCommands, {
     pageId: 'search-docs',
     groupId: 'docs-results',
-    groupLabel: !search ? 'Suggestions' : data?.docs.length ? 'Results' : undefined,
+    groupLabel: !search
+      ? t('commandPalette.groups.suggestions')
+      : data?.docs.length
+        ? t('commandPalette.groups.results')
+        : undefined,
     groupOrder: 0,
   })
 

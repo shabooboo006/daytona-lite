@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../ui/alert-dialog'
+import i18n from '@/i18n/init'
 
 export enum BulkAction {
   Delete = 'delete',
@@ -29,33 +30,33 @@ interface BulkActionData {
 }
 
 function getBulkActionData(action: BulkAction, count: number): BulkActionData {
-  const countText = count === 1 ? 'this sandbox' : `these ${count} selected sandboxes`
+  const countText = i18n.t('sandboxesModule.bulk.selectionTarget', { count })
 
   switch (action) {
     case BulkAction.Delete:
       return {
-        title: 'Delete Sandboxes',
-        description: `Are you sure you want to delete ${countText}? This action cannot be undone.`,
-        buttonLabel: 'Delete',
+        title: i18n.t('sandboxesModule.bulk.deleteTitle'),
+        description: i18n.t('sandboxesModule.bulk.deleteDescription', { target: countText }),
+        buttonLabel: i18n.t('sandboxesModule.actions.delete'),
         buttonVariant: 'destructive',
       }
     case BulkAction.Start:
       return {
-        title: 'Start Sandboxes',
-        description: `Are you sure you want to start ${countText}?`,
-        buttonLabel: 'Start',
+        title: i18n.t('sandboxesModule.bulk.startTitle'),
+        description: i18n.t('sandboxesModule.bulk.startDescription', { target: countText }),
+        buttonLabel: i18n.t('sandboxesModule.actions.start'),
       }
     case BulkAction.Stop:
       return {
-        title: 'Stop Sandboxes',
-        description: `Are you sure you want to stop ${countText}?`,
-        buttonLabel: 'Stop',
+        title: i18n.t('sandboxesModule.bulk.stopTitle'),
+        description: i18n.t('sandboxesModule.bulk.stopDescription', { target: countText }),
+        buttonLabel: i18n.t('sandboxesModule.actions.stop'),
       }
     case BulkAction.Archive:
       return {
-        title: 'Archive Sandboxes',
-        description: `Are you sure you want to archive ${countText}? Archived sandboxes can be restored later.`,
-        buttonLabel: 'Archive',
+        title: i18n.t('sandboxesModule.bulk.archiveTitle'),
+        description: i18n.t('sandboxesModule.bulk.archiveDescription', { target: countText }),
+        buttonLabel: i18n.t('sandboxesModule.actions.archive'),
       }
   }
 }

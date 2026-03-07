@@ -4,6 +4,7 @@
  */
 
 import { cn } from '@/lib/utils'
+import { translateLiteralText } from '@/i18n/literalTranslations'
 import { type ComponentProps } from 'react'
 import { BannerStack } from './Banner'
 import { SidebarTrigger } from './ui/sidebar'
@@ -30,13 +31,17 @@ function PageHeader({ className, children, ...props }: ComponentProps<'header'>)
 function PageTitle({ className, children, ...props }: ComponentProps<'h1'>) {
   return (
     <h1 className={cn('text-2xl font-medium tracking-tight', className)} {...props}>
-      {children}
+      {typeof children === 'string' ? translateLiteralText(children) : children}
     </h1>
   )
 }
 
 function PageDescription({ className, ...props }: ComponentProps<'p'>) {
-  return <p className={cn('text-sm text-muted-foreground', className)} {...props} />
+  return (
+    <p className={cn('text-sm text-muted-foreground', className)} {...props}>
+      {typeof props.children === 'string' ? translateLiteralText(props.children) : props.children}
+    </p>
+  )
 }
 
 function PageBanner({ className, children, ...props }: ComponentProps<'div'>) {

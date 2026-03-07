@@ -6,6 +6,7 @@
 import { cva, type VariantProps } from 'class-variance-authority'
 import * as React from 'react'
 
+import { translateNode } from '@/i18n/literalTranslations'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
 
@@ -39,7 +40,9 @@ function AlertTitle({ className, ...props }: React.ComponentProps<'div'>) {
       data-slot="alert-title"
       className={cn('col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight', className)}
       {...props}
-    />
+    >
+      {translateNode(props.children)}
+    </div>
   )
 }
 
@@ -52,7 +55,9 @@ function AlertDescription({ className, ...props }: React.ComponentProps<'div'>) 
         className,
       )}
       {...props}
-    />
+    >
+      {translateNode(props.children)}
+    </div>
   )
 }
 

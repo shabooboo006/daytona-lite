@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CheckIcon, CopyIcon } from 'lucide-react'
 import { ComponentProps } from 'react'
+import { useTranslation } from 'react-i18next'
 import TooltipButton from './TooltipButton'
 
 const MotionCopyIcon = motion(CopyIcon)
@@ -33,10 +34,11 @@ function CopyButton({
   'tooltipText'
 >) {
   const [copied, copy] = useCopyToClipboard()
+  const { t } = useTranslation()
 
   return (
     <TooltipButton
-      tooltipText={tooltipText || (copied ? 'Copied' : 'Copy')}
+      tooltipText={tooltipText || (copied ? t('common.copied') : t('common.copy'))}
       onClick={(e) => {
         copy(value)
         onClick?.(e)

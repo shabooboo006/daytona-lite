@@ -8,6 +8,7 @@
 import { cva, type VariantProps } from 'class-variance-authority'
 import { useMemo } from 'react'
 
+import { translateLiteralText } from '@/i18n/literalTranslations'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
@@ -140,7 +141,9 @@ function FieldDescription({ className, ...props }: React.ComponentProps<'p'>) {
         className,
       )}
       {...props}
-    />
+    >
+      {typeof props.children === 'string' ? translateLiteralText(props.children) : props.children}
+    </p>
   )
 }
 

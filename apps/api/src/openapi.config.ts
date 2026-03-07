@@ -7,9 +7,9 @@ import { DocumentBuilder } from '@nestjs/swagger'
 
 const getOpenApiConfig = () =>
   new DocumentBuilder()
-    .setTitle('Daytona')
+    .setTitle('Daytona Lite')
     .addServer('http://localhost:3000')
-    .setDescription('Daytona AI platform API Docs')
+    .setDescription('Daytona Lite AI platform API Docs')
     .setContact('Daytona Platforms Inc.', 'https://www.daytona.io', 'support@daytona.com')
     .setVersion('1.0')
     .addBearerAuth({

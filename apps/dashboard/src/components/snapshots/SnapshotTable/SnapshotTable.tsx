@@ -14,6 +14,7 @@ import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-tabl
 import { Box } from 'lucide-react'
 import { AnimatePresence } from 'motion/react'
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Pagination } from '../../Pagination'
 import { TableEmptyState } from '../../TableEmptyState'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table'
@@ -70,6 +71,7 @@ export function SnapshotTable({
   sorting,
   onSortingChange,
 }: DataTableProps) {
+  const { t } = useTranslation()
   const { authenticatedUserHasPermission } = useSelectedOrganization()
 
   const writePermitted = useMemo(
@@ -284,7 +286,7 @@ export function SnapshotTable({
       <Pagination
         table={table}
         selectionEnabled={deletePermitted}
-        entityName="Snapshots"
+        entityName={t('snapshotsModule.title')}
         totalItems={totalItems}
         className="mt-4"
       />

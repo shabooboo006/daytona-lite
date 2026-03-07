@@ -9,8 +9,9 @@ import { cn } from '@/lib/utils'
 import { Calendar } from '@/components/ui/calendar'
 import { Label } from '@/components/ui/label'
 import { useState } from 'react'
-import { format } from 'date-fns'
 import { CalendarIcon, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { getIntlLocale } from '@/i18n/init'
 
 interface LastEventFilterProps {
   value: (Date | undefined)[]
@@ -18,16 +19,19 @@ interface LastEventFilterProps {
 }
 
 export function LastEventFilterIndicator({ value, onFilterChange }: LastEventFilterProps) {
+  const { t } = useTranslation()
+  const formatDate = (date: Date) => date.toLocaleDateString(getIntlLocale(), { dateStyle: 'medium' })
+
   return (
     <div className="flex items-center h-6 gap-0.5 rounded-sm border border-border bg-muted/80 hover:bg-muted/50 text-sm">
       <Popover>
         <PopoverTrigger className="max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap text-muted-foreground px-2">
-          Last Event:{' '}
+          {t('sandboxesModule.filters.lastEvent')}:{' '}
           <span className="text-primary font-medium">
             {value.some((d) => d !== undefined)
               ? `${value
                   .filter((d): d is Date => d !== undefined)
-                  .map((d) => format(d, 'PPP'))
+                  .map(formatDate)
                   .join(' - ')}`
               : ''}
           </span>
@@ -50,8 +54,10 @@ interface LastEventFilterContentProps {
 }
 
 export function LastEventFilter({ onFilterChange, value }: LastEventFilterContentProps) {
+  const { t } = useTranslation()
   const [fromDate, setFromDate] = useState<Date | undefined>(value[0])
   const [toDate, setToDate] = useState<Date | undefined>(value[1])
+  const formatDate = (date: Date) => date.toLocaleDateString(getIntlLocale(), { dateStyle: 'medium' })
 
   const handleFromDateSelect = (selectedDate: Date | undefined) => {
     setFromDate(selectedDate)
@@ -76,9 +82,9 @@ export function LastEventFilter({ onFilterChange, value }: LastEventFilterConten
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <Label>Last event</Label>
+        <Label>{t('sandboxesModule.filters.lastEvent')}</Label>
         <button className="text-sm text-muted-foreground hover:text-primary px-2" onClick={() => handleClear()}>
-          Clear
+          {t('common.clear')}
         </button>
       </div>
       <div className="flex gap-2 items-center">
@@ -86,7 +92,7 @@ export function LastEventFilter({ onFilterChange, value }: LastEventFilterConten
           <PopoverTrigger asChild>
             <Button variant="outline" className={cn('min-w-40', !fromDate && 'text-muted-foreground')}>
               <CalendarIcon className=" h-4 w-4" />
-              {fromDate ? format(fromDate, 'PPP') : <span>Pick a date</span>}
+              {fromDate ? formatDate(fromDate) : <span>{t('sandboxesModule.filters.pickDate')}</span>}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -100,7 +106,7 @@ export function LastEventFilter({ onFilterChange, value }: LastEventFilterConten
           <PopoverTrigger asChild>
             <Button variant="outline" className={cn('min-w-40', !toDate && 'text-muted-foreground')}>
               <CalendarIcon className=" h-4 w-4" />
-              {toDate ? format(toDate, 'PPP') : <span>Pick a date</span>}
+              {toDate ? formatDate(toDate) : <span>{t('sandboxesModule.filters.pickDate')}</span>}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">

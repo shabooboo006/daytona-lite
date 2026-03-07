@@ -21,9 +21,11 @@ import { Spinner } from '@/components/ui/spinner'
 import { useCreateSnapshotMutation } from '@/hooks/mutations/useCreateSnapshotMutation'
 import { useSelectedOrganization } from '@/hooks/useSelectedOrganization'
 import { handleApiError } from '@/lib/error-handling'
+import { translateLiteralText } from '@/i18n/literalTranslations'
 import { useForm } from '@tanstack/react-form'
 import { Plus } from 'lucide-react'
 import { Ref, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { ScrollArea } from '../ui/scroll-area'
@@ -67,6 +69,7 @@ const defaultValues: FormValues = {
 }
 
 export const CreateSnapshotDialog = ({ className, ref }: { className?: string; ref?: Ref<{ open: () => void }> }) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   const { selectedOrganization } = useSelectedOrganization()
@@ -93,7 +96,7 @@ export const CreateSnapshotDialog = ({ className, ref }: { className?: string; r
     },
     onSubmit: async ({ value }) => {
       if (!selectedOrganization?.id) {
-        toast.error('Select an organization to create a snapshot.')
+        toast.error(translateLiteralText('Select an organization to create a snapshot.'))
         return
       }
 
@@ -112,10 +115,10 @@ export const CreateSnapshotDialog = ({ className, ref }: { className?: string; r
           organizationId: selectedOrganization.id,
         })
 
-        toast.success(`Creating snapshot ${value.name.trim()}`)
+        toast.success(`${translateLiteralText('Creating snapshot')} ${value.name.trim()}`)
         setOpen(false)
       } catch (error) {
-        handleApiError(error, 'Failed to create snapshot')
+        handleApiError(error, translateLiteralText('Failed to create snapshot'))
       }
     },
   })
@@ -139,9 +142,9 @@ export const CreateSnapshotDialog = ({ className, ref }: { className?: string; r
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="default" size="sm" className="ml-auto" title="Create Snapshot">
+        <Button variant="default" size="sm" className="ml-auto" title={t('snapshotsModule.create')}>
           <Plus className="w-4 h-4" />
-          Create Snapshot
+          {t('snapshotsModule.create')}
         </Button>
       </DialogTrigger>
       <DialogContent className={className}>

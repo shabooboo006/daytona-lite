@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="360" viewBox="0 0 1500 360" fill="none">
+  <rect width="1500" height="360" fill="transparent" />
+  <g transform="translate(42 26) scale(2.92)">
+    <g fill="#0F1115">
+      <rect x="21" y="15" width="10" height="24" />
+      <rect x="-5" y="-16" width="10" height="32" transform="translate(47 22) rotate(-45)" />
+      <rect x="55" y="25" width="26" height="10" />
+      <rect x="-5" y="-16" width="10" height="32" transform="translate(74 55) rotate(45)" />
+      <rect x="57" y="61" width="10" height="24" />
+      <rect x="-5" y="-16" width="10" height="32" transform="translate(40 75) rotate(-45)" />
+      <rect x="11" y="63" width="26" height="10" />
+      <rect x="-5" y="-16" width="10" height="32" transform="translate(14 52) rotate(45)" />
+    </g>
+  </g>
+  <text x="360" y="188" fill="#0F1115" font-family="Helvetica Neue, Arial, sans-serif" font-size="152" font-weight="600" letter-spacing="-7">
+    Daytona
+  </text>
+  <text x="1175" y="182" fill="#0F1115" font-family="Helvetica Neue, Arial, sans-serif" font-size="48" font-weight="700" letter-spacing="10">
+    LITE
+  </text>
+</svg>

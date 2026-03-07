@@ -5,9 +5,10 @@
 
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { cn, pluralize } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { CommandIcon, XIcon } from 'lucide-react'
 import { motion } from 'motion/react'
+import { useTranslation } from 'react-i18next'
 
 export function SelectionToast({
   className,
@@ -20,6 +21,8 @@ export function SelectionToast({
   onActionClick: () => void
   onClearSelection: () => void
 }) {
+  const { t } = useTranslation()
+
   return (
     <motion.div
       initial={{ scale: 0.9, opacity: 0, y: 20, x: '-50%' }}
@@ -30,7 +33,7 @@ export function SelectionToast({
       <div className="bg-background text-foreground border border-border rounded-lg shadow-lg pl-3 pr-1 py-1 flex items-center justify-between gap-4">
         <div className="flex items-center gap-1">
           <div className="text-sm tabular-nums whitespace-nowrap">
-            {pluralize(selectedCount, 'item', 'items')} selected
+            {t('common.selectedItems', { count: selectedCount })}
           </div>
           <Button variant="ghost" size="icon-sm" onClick={onClearSelection}>
             <XIcon className="size-3.5" />
@@ -40,7 +43,7 @@ export function SelectionToast({
 
         <Button variant="ghost" size="sm" className="h-8" onClick={onActionClick}>
           <CommandIcon className="size-3.5" />
-          <span className="text-sm">Actions</span>
+          <span className="text-sm">{t('common.actions')}</span>
         </Button>
       </div>
     </motion.div>

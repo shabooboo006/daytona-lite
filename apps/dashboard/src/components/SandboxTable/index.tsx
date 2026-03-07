@@ -18,6 +18,7 @@ import { flexRender } from '@tanstack/react-table'
 import { Container } from 'lucide-react'
 import { AnimatePresence } from 'motion/react'
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useCommandPaletteActions } from '../CommandPalette'
 import { Pagination } from '../Pagination'
@@ -68,6 +69,7 @@ export function SandboxTable({
   onFiltersChange,
   handleRecover,
 }: SandboxTableProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { authenticatedUserHasPermission } = useSelectedOrganization()
   const writePermitted = authenticatedUserHasPermission(OrganizationRolePermissionsEnum.WRITE_SANDBOXES)
@@ -104,7 +106,6 @@ export function SandboxTable({
   const selectedRows = table.getRowModel().rows.filter((row) => row.getIsSelected())
   const hasSelection = selectedRows.length > 0
   const selectedCount = selectedRows.length
-  const totalCount = table.getRowModel().rows.length
   const selectedSandboxes: Sandbox[] = selectedRows.map((row) => row.original)
 
   const bulkActionCounts = useMemo(() => getBulkActionCounts(selectedSandboxes), [selectedSandboxes])
@@ -148,7 +149,6 @@ export function SandboxTable({
     writePermitted,
     deletePermitted,
     selectedCount,
-    totalCount,
     selectableCount,
     toggleAllRowsSelected,
     bulkActionCounts,
@@ -208,7 +208,7 @@ export function SandboxTable({
           {loading ? (
             <TableRow>
               <TableCell colSpan={table.getAllColumns().length} className="h-10 text-center">
-                Loading...
+                {t('sandboxesModule.loading')}
               </TableCell>
             </TableRow>
           ) : table.getRowModel().rows?.length ? (
@@ -248,20 +248,19 @@ export function SandboxTable({
           ) : (
             <TableEmptyState
               colSpan={table.getAllColumns().length}
-              message="No Sandboxes yet."
+              message={t('sandboxesModule.table.emptyTitle')}
               icon={<Container className="w-8 h-8" />}
               description={
                 <div className="space-y-2">
-                  <p>Spin up a Sandbox to run code in an isolated environment.</p>
-                  <p>Use the Daytona SDK or CLI to create one.</p>
+                  <p>{t('sandboxesModule.table.emptyDescription')}</p>
+                  <p>{t('sandboxesModule.table.emptyDescriptionSecondary')}</p>
                   <p>
                     <button
                       onClick={() => navigate(RoutePath.ONBOARDING)}
                       className="text-primary hover:underline font-medium"
                     >
-                      Check out the Onboarding guide
-                    </button>{' '}
-                    to learn more.
+                      {t('sandboxesModule.table.emptyLink')}
+                    </button>
                   </p>
                 </div>
               }

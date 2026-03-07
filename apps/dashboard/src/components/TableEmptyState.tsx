@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0
  */
 
+import { translateLiteralText } from '@/i18n/literalTranslations'
 import { TableRow, TableCell } from './ui/table'
 
 interface TableEmptyStateProps {
@@ -34,7 +35,7 @@ export function TableEmptyState({ colSpan, message, icon, description, className
       <TableCell colSpan={colSpan} className={`h-24 text-center ${className}`}>
         <div className="flex flex-col items-center justify-center space-y-3 py-8">
           {icon && <div className="text-muted-foreground">{icon}</div>}
-          <p className="text-muted-foreground font-medium">{message}</p>
+          <p className="text-muted-foreground font-medium">{translateLiteralText(message)}</p>
           {description && <div className="text-sm text-muted-foreground/80 max-w-md">{description}</div>}
         </div>
       </TableCell>

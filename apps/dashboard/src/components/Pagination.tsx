@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-r
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Button } from './ui/button'
 import { PAGE_SIZE_OPTIONS } from '../constants/Pagination'
+import { useTranslation } from 'react-i18next'
 
 interface PaginationProps<TData> {
   table: Table<TData>
@@ -24,6 +25,8 @@ export function Pagination<TData>({
   entityName,
   totalItems,
 }: PaginationProps<TData>) {
+  const { t } = useTranslation()
+
   return (
     <div className={`flex flex-col sm:flex-row gap-2 sm:items-center justify-between w-full ${className}`}>
       <div className="flex items-center gap-4">
@@ -34,12 +37,12 @@ export function Pagination<TData>({
           }}
         >
           <SelectTrigger className="h-8 w-[164px]">
-            <SelectValue placeholder={table.getState().pagination.pageSize + 'per page'} />
+            <SelectValue placeholder={t('pagination.perPage', { count: table.getState().pagination.pageSize })} />
           </SelectTrigger>
           <SelectContent side="top">
             {PAGE_SIZE_OPTIONS.map((pageSize) => (
               <SelectItem key={pageSize} value={`${pageSize}`}>
-                {pageSize} per page
+                {t('pagination.perPage', { count: pageSize })}
               </SelectItem>
             ))}
           </SelectContent>
@@ -47,18 +50,24 @@ export function Pagination<TData>({
 
         {selectionEnabled ? (
           <div className="flex-1 text-sm text-muted-foreground">
-            {table.getFilteredSelectedRowModel().rows.length} of {totalItems ?? table.getFilteredRowModel().rows.length}{' '}
-            item(s) selected.
+            {t('pagination.selectedSummary', {
+              selected: table.getFilteredSelectedRowModel().rows.length,
+              total: totalItems ?? table.getFilteredRowModel().rows.length,
+            })}
           </div>
         ) : (
           <div className="flex-1 text-sm text-muted-foreground">
-            {totalItems ?? table.getFilteredRowModel().rows.length} total item(s)
+            {t('pagination.totalSummary', { total: totalItems ?? table.getFilteredRowModel().rows.length })}
+            {entityName ? ` ${entityName}` : ''}
           </div>
         )}
       </div>
       <div className="flex items-center gap-4">
         <div className="flex items-center justify-end text-sm font-medium text-muted-foreground">
-          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() || 1}
+          {t('pagination.pageStatus', {
+            page: table.getState().pagination.pageIndex + 1,
+            totalPages: table.getPageCount() || 1,
+          })}
         </div>
         <div className="flex items-center space-x-2">
           <Button

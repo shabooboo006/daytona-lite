@@ -14,7 +14,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { SandboxState } from '@daytonaio/api-client'
 import { X } from 'lucide-react'
-import { STATUSES, getStateLabel } from '../constants'
+import { useTranslation } from 'react-i18next'
+import { SANDBOX_FILTER_STATES, getStateLabel } from '../constants'
 
 interface StateFilterProps {
   value: string[]
@@ -22,12 +23,13 @@ interface StateFilterProps {
 }
 
 export function StateFilterIndicator({ value, onFilterChange }: StateFilterProps) {
+  const { t } = useTranslation()
   const selectedStates = value.map((v) => getStateLabel(v as SandboxState))
   return (
     <div className="flex items-center h-6 gap-0.5 rounded-sm border border-border bg-muted/80 hover:bg-muted/50 text-sm">
       <Popover>
         <PopoverTrigger className="max-w-[240px] overflow-hidden text-ellipsis whitespace-nowrap text-muted-foreground px-2">
-          States:{' '}
+          {t('sandboxesModule.filters.states')}:{' '}
           <span className="text-primary font-medium">
             {selectedStates.length > 0
               ? selectedStates.length > 2
@@ -50,20 +52,22 @@ export function StateFilterIndicator({ value, onFilterChange }: StateFilterProps
 }
 
 export function StateFilter({ value, onFilterChange }: StateFilterProps) {
+  const { t } = useTranslation()
+
   return (
     <Command>
-      <CommandInput placeholder="Search...">
+      <CommandInput placeholder={t('commandPalette.placeholder')}>
         <CommandInputButton
           className="text-sm text-muted-foreground hover:text-primary px-2"
           onClick={() => onFilterChange(undefined)}
         >
-          Clear
+          {t('common.clear')}
         </CommandInputButton>
       </CommandInput>
 
       <CommandList>
         <CommandGroup>
-          {STATUSES.map((status) => (
+          {SANDBOX_FILTER_STATES.map((status) => (
             <CommandCheckboxItem
               key={status.value}
               checked={value.includes(status.value)}
@@ -74,7 +78,7 @@ export function StateFilter({ value, onFilterChange }: StateFilterProps) {
                 onFilterChange(newValue.length > 0 ? newValue : undefined)
               }}
             >
-              {status.label}
+              {getStateLabel(status.value as SandboxState)}
             </CommandCheckboxItem>
           ))}
         </CommandGroup>

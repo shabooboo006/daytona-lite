@@ -4,6 +4,7 @@
  */
 
 import { ExternalToast, toast } from 'sonner'
+import i18n from '@/i18n/init'
 
 type ToastId = string | number
 
@@ -14,6 +15,7 @@ interface BulkActionResultOptions {
   errorTitle: string
   warningTitle: string
   canceledTitle: string
+  partialDescription?: string
 }
 
 interface BulkActionToast {
@@ -85,7 +87,13 @@ export function createBulkActionToast(initialMessage: string, options?: BulkActi
         this.error(opts.errorTitle)
       } else if (processedCount > 0) {
         this.warning(opts.warningTitle, {
-          description: `${successCount} succeeded. ${failureCount} failed.`,
+          description:
+            opts.partialDescription ??
+            i18n.t('sandboxesModule.bulk.partialDescription', {
+              successCount,
+              failureCount,
+              defaultValue: `${successCount} succeeded. ${failureCount} failed.`,
+            }),
         })
       } else {
         this.info(opts.canceledTitle)

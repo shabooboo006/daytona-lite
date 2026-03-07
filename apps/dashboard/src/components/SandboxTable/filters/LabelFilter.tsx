@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Plus, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface LabelFilterProps {
   value: string[]
@@ -16,11 +17,15 @@ interface LabelFilterProps {
 }
 
 export function LabelFilterIndicator({ value, onFilterChange }: Pick<LabelFilterProps, 'value' | 'onFilterChange'>) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex items-center h-6 gap-0.5 rounded-sm border border-border bg-muted/80 hover:bg-muted/50 text-sm">
       <Popover>
         <PopoverTrigger className="max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap text-muted-foreground px-2">
-          Labels: <span className="text-primary font-medium">{value.length} selected</span>
+          <span className="text-primary font-medium">
+            {t('sandboxesModule.filters.labelsSelected', { count: value.length })}
+          </span>
         </PopoverTrigger>
 
         <PopoverContent className="p-0 w-[320px]" align="start">
@@ -36,6 +41,7 @@ export function LabelFilterIndicator({ value, onFilterChange }: Pick<LabelFilter
 }
 
 export function LabelFilter({ value, onFilterChange }: LabelFilterProps) {
+  const { t } = useTranslation()
   const [newKey, setNewKey] = useState('')
   const [newValue, setNewValue] = useState('')
 
@@ -68,9 +74,9 @@ export function LabelFilter({ value, onFilterChange }: LabelFilterProps) {
     <div className="p-3 space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium">Labels</h4>
+        <h4 className="text-sm font-medium">{t('sandboxesModule.headers.labels')}</h4>
         <button className="text-sm text-muted-foreground hover:text-primary pl-2" onClick={clearAll}>
-          Clear
+          {t('common.clear')}
         </button>
       </div>
 
@@ -114,7 +120,7 @@ export function LabelFilter({ value, onFilterChange }: LabelFilterProps) {
       <div className="space-y-2">
         <div className="space-y-2">
           <Input
-            placeholder="Key"
+            placeholder={t('sandboxesModule.filters.key')}
             value={newKey}
             onChange={(e) => setNewKey(e.target.value)}
             className="h-8"
@@ -125,7 +131,7 @@ export function LabelFilter({ value, onFilterChange }: LabelFilterProps) {
             }}
           />
           <Input
-            placeholder="Value"
+            placeholder={t('sandboxesModule.filters.value')}
             value={newValue}
             onChange={(e) => setNewValue(e.target.value)}
             className="h-8"
@@ -143,7 +149,7 @@ export function LabelFilter({ value, onFilterChange }: LabelFilterProps) {
             disabled={!newKey.trim() || !newValue.trim()}
           >
             <Plus className="h-3 w-3 mr-1" />
-            Add Label
+            {t('sandboxesModule.filters.addLabel')}
           </Button>
         </div>
       </div>

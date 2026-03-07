@@ -155,7 +155,9 @@ const Onboarding: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold mb-4">Install the SDK</h2>
-                  <p className="mb-4">Run the following command in your terminal to install the Daytona SDK:</p>
+                  <p className="mb-4">
+                    Run the following command in your terminal to install the Daytona SDK for Daytona Lite:
+                  </p>
                   <div className="transition-all duration-500">
                     <CodeBlock code={codeExamples[language].install} language="bash" showCopy />
                   </div>
@@ -304,7 +306,7 @@ const Onboarding: React.FC = () => {
                 <div className={!createdApiKey ? 'opacity-40 pointer-events-none' : ''}>
                   <h2 className="text-xl font-semibold mb-4">That's It</h2>
                   <p className="text-muted-foreground">
-                    It's as easy as that. For more examples check out the{' '}
+                    Daytona Lite is ready. For more examples check out the{' '}
                     <a href={DAYTONA_DOCS_URL} target="_blank" rel="noopener noreferrer" className="text-primary">
                       Docs
                     </a>
@@ -326,7 +328,7 @@ const codeExamples = {
     run: `npx tsx index.mts`,
     example: `import { Daytona } from '@daytonaio/sdk'
   
-// Initialize the Daytona client
+// Initialize the client
 const daytona = new Daytona({ apiKey: 'your-api-key' });
 
 // Create the Sandbox instance
@@ -347,7 +349,7 @@ console.log(response.result);
 # Define the configuration
 config = DaytonaConfig(api_key="your-api-key")
 
-# Initialize the Daytona client
+# Initialize the client
 daytona = Daytona(config)
 
 # Create the Sandbox instance

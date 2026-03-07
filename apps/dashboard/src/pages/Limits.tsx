@@ -13,13 +13,16 @@ import { useOrganizationUsageOverviewQuery } from '@/hooks/queries/useOrganizati
 import { useConfig } from '@/hooks/useConfig'
 import { useRegions } from '@/hooks/useRegions'
 import { useSelectedOrganization } from '@/hooks/useSelectedOrganization'
+import { getIntlLocale } from '@/i18n/init'
 import { cn } from '@/lib/utils'
 import type { RegionUsageOverview } from '@daytonaio/api-client'
 import { keepPreviousData } from '@tanstack/react-query'
 import { RefreshCcw } from 'lucide-react'
 import { ReactNode, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export default function Limits() {
+  const { t } = useTranslation()
   const { selectedOrganization } = useSelectedOrganization()
 
   const { getRegionName } = useRegions()
@@ -62,20 +65,20 @@ export default function Limits() {
   return (
     <PageLayout>
       <PageHeader>
-        <PageTitle>Limits</PageTitle>
+        <PageTitle>{t('pages.limits')}</PageTitle>
       </PageHeader>
 
       <PageContent>
         {isError ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-center">Oops, something went wrong</CardTitle>
+              <CardTitle className="text-center">{t('errors.somethingWentWrong')}</CardTitle>
             </CardHeader>
             <CardContent className="flex justify-between items-center flex-col gap-3">
               <div>There was an error loading your limits.</div>
               <Button variant="outline" onClick={handleRetry}>
                 <RefreshCcw className="mr-2 h-4 w-4" />
-                Retry
+                {t('common.retry')}
               </Button>
             </CardContent>
           </Card>
@@ -232,7 +235,7 @@ function RateLimitItem({ label, value, unit, ttlSeconds }: LimitItem) {
     <div className="flex flex-col">
       <div className="text-muted-foreground text-xs">{label}</div>
       <div className="text-foreground text-sm font-medium">
-        {value?.toLocaleString()}
+        {value?.toLocaleString(getIntlLocale())}
         {unit ? ` ${unit}` : formatTtl(ttlSeconds)}
       </div>
     </div>

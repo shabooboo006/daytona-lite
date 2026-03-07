@@ -6,11 +6,13 @@
 'use client'
 
 import { useDeepCompareMemo } from '@/hooks/useDeepCompareMemo'
+import i18n from '@/i18n/init'
 import { cn, pluralize } from '@/lib/utils'
 import { useCommandState } from 'cmdk'
 import { AlertCircle, ChevronRight, Loader2 } from 'lucide-react'
 import { AnimatePresence, motion, useAnimate } from 'motion/react'
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { createStore, useStore, type StoreApi } from 'zustand'
 import {
   Command,
@@ -102,7 +104,11 @@ const createCommandPaletteStore = (defaultPage = 'root') => {
       [
         defaultPage,
         {
-          meta: { id: defaultPage, label: 'Home', placeholder: 'Type a command or search...' },
+          meta: {
+            id: defaultPage,
+            label: i18n.t('commandPalette.home'),
+            placeholder: i18n.t('commandPalette.placeholder'),
+          },
           groups: new Map(),
         },
       ],
@@ -332,6 +338,8 @@ export type CommandPaletteProps = {
 }
 
 export function CommandPalette({ className, overlay }: CommandPaletteProps) {
+  const { t } = useTranslation()
+  useRegisterPage({ id: 'root', label: t('commandPalette.home'), placeholder: t('commandPalette.placeholder') })
   const pages = useCommandPalette((state) => state.pages)
   const activePageId = useCommandPalette((state) => state.activePageId)
   const isOpen = useCommandPalette((state) => state.isOpen)
@@ -387,17 +395,15 @@ export function CommandPalette({ className, overlay }: CommandPaletteProps) {
           loop
           className="bg-transparent [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
         >
-          <DialogTitle className="sr-only">Command Palette</DialogTitle>
-          <DialogDescription className="sr-only">
-            Use the command palette to navigate the application.
-          </DialogDescription>
+          <DialogTitle className="sr-only">{t('commandPalette.title')}</DialogTitle>
+          <DialogDescription className="sr-only">{t('commandPalette.description')}</DialogDescription>
 
           <Breadcrumbs />
 
           <CommandInput
             value={search}
             onValueChange={setSearch}
-            placeholder={activePage?.meta.placeholder ?? 'Type a command or search...'}
+            placeholder={activePage?.meta.placeholder ?? t('commandPalette.placeholder')}
             ref={inputRef}
             onKeyDown={(e) => {
               if (e.key === 'Backspace' && !search && pageStack.length > 1) {
@@ -429,11 +435,11 @@ export function CommandPalette({ className, overlay }: CommandPaletteProps) {
                 onClick={popPage}
                 className="hover:text-foreground mr-2 flex items-center gap-1 transition-colors"
               >
-                <Kbd>Backspace</Kbd> to go back
+                <Kbd>Backspace</Kbd> {t('commandPalette.backHint')}
               </button>
             ) : (
               <span>
-                Use <Kbd>↑</Kbd> <Kbd>↓</Kbd> to navigate
+                {t('commandPalette.navigateHint')} <Kbd>↑</Kbd> <Kbd>↓</Kbd> {t('commandPalette.navigateHintSuffix')}
               </span>
             )}
           </CommandFooter>
@@ -446,6 +452,7 @@ export function CommandPalette({ className, overlay }: CommandPaletteProps) {
 function Breadcrumbs() {
   const { pageStack, pages } = useCommandPalette()
   const { goToPage } = useCommandPaletteActions()
+  const { t } = useTranslation()
 
   return (
     <div className="flex items-center gap-1 border-b-[0.5px] px-3 py-2 text-xs text-muted-foreground dark:bg-muted/20 bg-muted">
@@ -464,7 +471,7 @@ function Breadcrumbs() {
               className={cn(isLast && 'font-medium', 'hover:text-foreground transition-colors')}
               onClick={() => goToPage(id)}
             >
-              {page?.meta.label ?? id}
+              {page?.meta.label ?? (id === 'root' ? t('commandPalette.home') : id)}
             </button>
           </React.Fragment>
         )
@@ -547,15 +554,19 @@ function CommandFooter({
       )}
     >
       {children}
-      {!hideResultsCount && <span className="ml-auto">{pluralize(resultsCount, 'result', 'results')}</span>}
+      {!hideResultsCount && (
+        <span className="ml-auto">{pluralize(resultsCount, 'result', 'results', 'commandPalette.results')}</span>
+      )}
     </div>
   )
 }
 
 function CommandEmpty({ search }: { search: string }) {
+  const { t } = useTranslation()
+
   return (
     <CommandEmptyPrimitive className="text-muted-foreground py-6 text-center text-sm">
-      No results found for <span className="text-foreground">"{search}"</span>.
+      {t('commandPalette.noResults', { search })}
     </CommandEmptyPrimitive>
   )
 }
@@ -612,7 +623,7 @@ export function CommandHighlight({
 }
 
 export function CommandError({
-  message = 'Something went wrong',
+  message,
   onRetry,
   className,
 }: {
@@ -620,16 +631,18 @@ export function CommandError({
   onRetry?: () => void
   className?: string
 }) {
+  const { t } = useTranslation()
+
   return (
     <div className={cn('flex flex-col items-center justify-center py-6 px-4 text-center', className)}>
       <AlertCircle className="h-6 w-6 text-destructive mb-2" />
-      <p className="text-sm text-muted-foreground">{message}</p>
+      <p className="text-sm text-muted-foreground">{message ?? t('commandPalette.errors.generic')}</p>
       {onRetry && (
         <button
           onClick={onRetry}
           className="mt-2 text-sm text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
-          Try again
+          {t('commandPalette.errors.retry')}
         </button>
       )}
     </div>

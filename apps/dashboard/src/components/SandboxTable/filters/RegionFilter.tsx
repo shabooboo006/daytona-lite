@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Loader2, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { FacetedFilterOption } from '../types'
 
 interface RegionFilterProps {
@@ -24,6 +25,7 @@ interface RegionFilterProps {
 }
 
 export function RegionFilterIndicator({ value, onFilterChange, options, isLoading }: RegionFilterProps) {
+  const { t } = useTranslation()
   const selectedRegionLabels = value
     .map((v) => options?.find((r) => r.value === v)?.label)
     .filter(Boolean)
@@ -33,9 +35,9 @@ export function RegionFilterIndicator({ value, onFilterChange, options, isLoadin
     <div className="flex items-center h-6 gap-0.5 rounded-sm border border-border bg-muted/80 hover:bg-muted/50 text-sm">
       <Popover>
         <PopoverTrigger className="max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap text-muted-foreground px-2">
-          Region:{' '}
+          {t('sandboxesModule.headers.region')}:{' '}
           <span className="text-primary font-medium">
-            {selectedRegionLabels.length > 0 ? selectedRegionLabels : 'All'}
+            {selectedRegionLabels.length > 0 ? selectedRegionLabels : t('common.all')}
           </span>
         </PopoverTrigger>
 
@@ -52,20 +54,22 @@ export function RegionFilterIndicator({ value, onFilterChange, options, isLoadin
 }
 
 export function RegionFilter({ value, onFilterChange, options, isLoading }: RegionFilterProps) {
+  const { t } = useTranslation()
+
   return (
     <Command>
-      <CommandInput placeholder="Search..." className="">
-        <CommandInputButton onClick={() => onFilterChange(undefined)}>Clear</CommandInputButton>
+      <CommandInput placeholder={t('commandPalette.placeholder')} className="">
+        <CommandInputButton onClick={() => onFilterChange(undefined)}>{t('common.clear')}</CommandInputButton>
       </CommandInput>
       <CommandList>
         {isLoading ? (
           <div className="flex items-center justify-center py-6">
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            <span className="text-sm text-muted-foreground">Loading regions...</span>
+            <span className="text-sm text-muted-foreground">{t('sandboxesModule.filters.loadingRegions')}</span>
           </div>
         ) : (
           <>
-            <CommandEmpty>No regions found.</CommandEmpty>
+            <CommandEmpty>{t('sandboxesModule.filters.noRegionsFound')}</CommandEmpty>
             <CommandGroup>
               {options?.map((region) => (
                 <CommandCheckboxItem

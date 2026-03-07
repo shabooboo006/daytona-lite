@@ -7,6 +7,7 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import { Check, ChevronRight, Circle } from 'lucide-react'
 import * as React from 'react'
 
+import { translateNode } from '@/i18n/literalTranslations'
 import { cn } from '@/lib/utils'
 
 const DropdownMenu = DropdownMenuPrimitive.Root
@@ -36,7 +37,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
     )}
     {...props}
   >
-    {children}
+    {translateNode(children)}
     <ChevronRight className="ml-auto" />
   </DropdownMenuPrimitive.SubTrigger>
 ))
@@ -81,7 +82,7 @@ const DropdownMenuItem = React.forwardRef<
     inset?: boolean
     variant?: 'default' | 'destructive'
   }
->(({ className, inset, variant = 'default', ...props }, ref) => (
+>(({ className, inset, variant = 'default', children, ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
     data-variant={variant}
@@ -92,7 +93,9 @@ const DropdownMenuItem = React.forwardRef<
       className,
     )}
     {...props}
-  />
+  >
+    {translateNode(children)}
+  </DropdownMenuPrimitive.Item>
 ))
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
 
@@ -114,7 +117,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
         <Check className="h-4 w-4" />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
-    {children}
+    {translateNode(children)}
   </DropdownMenuPrimitive.CheckboxItem>
 ))
 DropdownMenuCheckboxItem.displayName = DropdownMenuPrimitive.CheckboxItem.displayName
@@ -136,7 +139,7 @@ const DropdownMenuRadioItem = React.forwardRef<
         <Circle className="h-2 w-2 fill-current" />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
-    {children}
+    {translateNode(children)}
   </DropdownMenuPrimitive.RadioItem>
 ))
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
@@ -146,12 +149,14 @@ const DropdownMenuLabel = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
     inset?: boolean
   }
->(({ className, inset, ...props }, ref) => (
+>(({ className, inset, children, ...props }, ref) => (
   <DropdownMenuPrimitive.Label
     ref={ref}
     className={cn('px-2 py-1.5 text-sm font-semibold', inset && 'pl-8', className)}
     {...props}
-  />
+  >
+    {translateNode(children)}
+  </DropdownMenuPrimitive.Label>
 ))
 DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName
 

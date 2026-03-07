@@ -6,12 +6,15 @@
 import { PageContent, PageHeader, PageLayout, PageTitle } from '@/components/PageLayout'
 import { Card, CardContent } from '@/components/ui/card'
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 
 const AccountSettings: React.FC = () => {
+  const { t } = useTranslation()
+
   return (
     <PageLayout>
       <PageHeader>
-        <PageTitle>Account Settings</PageTitle>
+        <PageTitle>{t('pages.accountSettings')}</PageTitle>
       </PageHeader>
 
       <PageContent>
@@ -21,9 +24,8 @@ const AccountSettings: React.FC = () => {
               <div className="text-sm">
                 <div className="text-sm">
                   <div className="text-muted-foreground">
-                    <p className="font-semibold text-foreground">No Additional Account Settings</p>
-                    This private deployment enables the available product telemetry by default and does not require
-                    end-user privacy consent prompts.
+                    <p className="font-semibold text-foreground">{t('accountSettings.emptyTitle')}</p>
+                    {t('accountSettings.emptyDescription')}
                   </div>
                 </div>
               </div>

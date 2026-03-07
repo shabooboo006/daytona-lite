@@ -5,12 +5,13 @@
 
 import { Action, toast } from 'sonner'
 import { DaytonaError } from '@/api/errors'
+import i18n from '@/i18n/init'
 
 export function handleApiError(error: unknown, message: string, toastAction?: React.ReactNode | Action) {
   const isDaytonaError = error instanceof DaytonaError
 
   toast.error(message, {
-    description: isDaytonaError ? error.message : 'Please try again or check the console for more details',
+    description: isDaytonaError ? error.message : i18n.t('common.tryAgainOrCheckConsole'),
     action: toastAction,
   })
 

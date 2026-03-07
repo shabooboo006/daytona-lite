@@ -9,14 +9,17 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RoutePath } from '@/enums/RoutePath'
 import { useAuth } from '@/hooks/useAuth'
+import { useI18n } from '@/i18n/useI18n'
 import React, { useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
+import { StandaloneLanguageToggle } from '@/components/StandaloneLanguageToggle'
 
 const apiUrl = (import.meta.env.VITE_BASE_API_URL ?? window.location.origin) + '/api'
 
 const LandingPage: React.FC = () => {
   const { login, isAuthenticated, isLoading } = useAuth()
   const location = useLocation()
+  const { t } = useI18n()
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -43,18 +46,18 @@ const LandingPage: React.FC = () => {
         body: JSON.stringify({ password }),
       })
       if (!res.ok) {
-        setError('Invalid password. Please try again.')
+        setError(t('landing.invalidPassword'))
         return
       }
       const data = await res.json()
       const accessToken = data.token ?? data.access_token
       if (!accessToken) {
-        setError('Login response did not include an access token.')
+        setError(t('landing.missingToken'))
         return
       }
       login(accessToken)
     } catch {
-      setError('Network error. Please try again.')
+      setError(t('landing.networkError'))
     } finally {
       setSubmitting(false)
     }
@@ -62,27 +65,28 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
+      <StandaloneLanguageToggle />
       <div className="w-full max-w-sm space-y-6 p-8 border border-border rounded-lg shadow-sm">
         <div className="space-y-1 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">Daytona</h1>
-          <p className="text-sm text-muted-foreground">Enter your admin password to continue</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Daytona Lite</h1>
+          <p className="text-sm text-muted-foreground">{t('landing.subtitle')}</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t('landing.password')}</Label>
             <Input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Admin password"
+              placeholder={t('landing.passwordPlaceholder')}
               required
               autoFocus
             />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? 'Signing in…' : 'Sign in'}
+            {submitting ? t('landing.signingIn') : t('common.signIn')}
           </Button>
         </form>
       </div>

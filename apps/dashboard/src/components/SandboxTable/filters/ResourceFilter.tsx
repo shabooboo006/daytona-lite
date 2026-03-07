@@ -7,6 +7,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { X } from 'lucide-react'
 
@@ -22,39 +23,48 @@ interface ResourceFilterProps {
   resourceType?: 'cpu' | 'memory' | 'disk'
 }
 
-const RESOURCE_CONFIG = {
-  cpu: { label: 'vCPU', displayLabel: 'CPU' },
-  memory: { label: 'Memory (GiB)', displayLabel: 'Memory' },
-  disk: { label: 'Disk (GiB)', displayLabel: 'Disk' },
-} as const
-
 export function ResourceFilterIndicator({ value, onFilterChange, resourceType }: ResourceFilterProps) {
+  const { t } = useTranslation()
   const { title, label } = useMemo(() => {
-    let title = 'All'
-    let label = 'Resources'
+    const resourceConfig = {
+      cpu: { label: 'vCPU', displayLabel: t('sandboxesModule.resourceLabels.cpu') },
+      memory: {
+        label: t('sandboxesModule.resourceLabels.memoryWithUnit'),
+        displayLabel: t('sandboxesModule.resourceLabels.memory'),
+      },
+      disk: {
+        label: t('sandboxesModule.resourceLabels.diskWithUnit'),
+        displayLabel: t('sandboxesModule.resourceLabels.disk'),
+      },
+    } as const
+
+    let title = t('common.all')
+    let label = t('sandboxesModule.headers.resources')
 
     if (resourceType) {
       const resourceValue = value[resourceType]
       if (resourceValue?.min || resourceValue?.max) {
-        const config = RESOURCE_CONFIG[resourceType]
+        const config = resourceConfig[resourceType]
         const unit = resourceType === 'cpu' ? 'vCPU' : 'GiB'
-        title = `${resourceValue.min ?? 'Any'} - ${resourceValue.max ?? 'Any'} ${unit}`
+        title = `${resourceValue.min ?? t('common.any')} - ${resourceValue.max ?? t('common.any')} ${unit}`
         label = config.displayLabel
       }
     } else {
       const filters: string[] = []
-      Object.entries(RESOURCE_CONFIG).forEach(([type, config]) => {
+      Object.entries(resourceConfig).forEach(([type, config]) => {
         const resourceValue = value[type as keyof ResourceFilterValue]
         if (resourceValue?.min || resourceValue?.max) {
           const unit = type === 'cpu' ? 'vCPU' : 'GiB'
-          filters.push(`${config.displayLabel}: ${resourceValue.min ?? 'any'}-${resourceValue.max ?? 'any'} ${unit}`)
+          filters.push(
+            `${config.displayLabel}: ${resourceValue.min ?? t('common.any')}-${resourceValue.max ?? t('common.any')} ${unit}`,
+          )
         }
       })
-      title = filters.length > 0 ? filters.join('; ') : 'All'
+      title = filters.length > 0 ? filters.join('; ') : t('common.all')
     }
 
     return { title, label }
-  }, [value, resourceType])
+  }, [t, value, resourceType])
 
   return (
     <div className="flex items-center h-6 gap-0.5 rounded-sm border border-border bg-muted/80 hover:bg-muted/50 text-sm">
@@ -87,6 +97,19 @@ export function ResourceFilterIndicator({ value, onFilterChange, resourceType }:
 }
 
 export function ResourceFilter({ value, onFilterChange, resourceType }: ResourceFilterProps) {
+  const { t } = useTranslation()
+  const resourceConfig = {
+    cpu: { label: 'vCPU' as const, displayLabel: 'CPU' },
+    memory: {
+      label: t('sandboxesModule.resourceLabels.memoryWithUnit'),
+      displayLabel: t('sandboxesModule.resourceLabels.memory'),
+    },
+    disk: {
+      label: t('sandboxesModule.resourceLabels.diskWithUnit'),
+      displayLabel: t('sandboxesModule.resourceLabels.disk'),
+    },
+  } as const
+
   const handleValueChange = (
     resource: keyof ResourceFilterValue,
     field: 'min' | 'max',
@@ -113,7 +136,7 @@ export function ResourceFilter({ value, onFilterChange, resourceType }: Resource
   }
 
   if (resourceType) {
-    const config = RESOURCE_CONFIG[resourceType]
+    const config = resourceConfig[resourceType]
     const currentValues = value[resourceType] || {}
 
     return (
@@ -124,13 +147,13 @@ export function ResourceFilter({ value, onFilterChange, resourceType }: Resource
             className="text-sm text-muted-foreground hover:text-primary"
             onClick={() => handleClear(resourceType)}
           >
-            Clear
+            {t('common.clear')}
           </button>
         </div>
         <div className="flex items-center gap-2">
           <Input
             type="number"
-            placeholder="Min"
+            placeholder={t('sandboxesModule.filters.min')}
             min={0}
             value={currentValues.min ?? ''}
             onChange={(e) => {
@@ -142,7 +165,7 @@ export function ResourceFilter({ value, onFilterChange, resourceType }: Resource
           <div className="w-8 h-[1px] bg-border"></div>
           <Input
             type="number"
-            placeholder="Max"
+            placeholder={t('sandboxesModule.filters.max')}
             min={0}
             value={currentValues.max ?? ''}
             onChange={(e) => {

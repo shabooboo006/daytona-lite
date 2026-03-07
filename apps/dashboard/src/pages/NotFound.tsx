@@ -4,22 +4,26 @@
  */
 
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { RoutePath } from '@/enums/RoutePath'
 import { Home } from 'lucide-react'
+import { StandaloneLanguageToggle } from '@/components/StandaloneLanguageToggle'
 
 const NotFound: React.FC = () => {
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <StandaloneLanguageToggle />
       <div className="text-center space-y-6 max-w-lg">
         <h1 className="text-4xl font-bold text-foreground animate-bounce">404</h1>
-        <p className="text-base text-muted-foreground">The page you're looking for doesn't exist or has been moved.</p>
+        <p className="text-base text-muted-foreground">{t('notFound.message')}</p>
         <Button onClick={() => navigate(RoutePath.DASHBOARD)} className="flex items-center gap-2 mx-auto">
           <Home className="w-4 h-4" />
-          Go to Dashboard
+          {t('notFound.backToDashboard')}
         </Button>
       </div>
     </div>

@@ -4,6 +4,7 @@
  */
 
 import { formatTimestamp, getRelativeTimeString } from '@/lib/utils'
+import i18n from '@/i18n/init'
 import { Sandbox, SandboxDesiredState, SandboxState } from '@daytonaio/api-client'
 import { ColumnDef } from '@tanstack/react-table'
 import { ArrowDown, ArrowUp } from 'lucide-react'
@@ -98,7 +99,7 @@ export function getColumns({
               }
             }
           }}
-          aria-label="Select all"
+          aria-label={i18n.t('sandboxesModule.table.selectAll')}
           className="translate-y-[2px]"
         />
       ),
@@ -108,7 +109,7 @@ export function getColumns({
             <Checkbox
               checked={row.getIsSelected()}
               onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label="Select row"
+              aria-label={i18n.t('sandboxesModule.table.selectRow')}
               onClick={(e) => e.stopPropagation()}
               className="translate-y-[1px]"
             />
@@ -125,7 +126,7 @@ export function getColumns({
       enableSorting: true,
       enableHiding: true,
       header: ({ column }) => {
-        return <SortableHeader column={column} label="Name" />
+        return <SortableHeader column={column} label={i18n.t('sandboxesModule.headers.name')} />
       },
       accessorKey: 'name',
       cell: ({ row }) => {
@@ -143,7 +144,7 @@ export function getColumns({
       enableSorting: false,
       enableHiding: true,
       header: () => {
-        return <span>UUID</span>
+        return <span>{i18n.t('sandboxesModule.headers.uuid')}</span>
       },
       accessorKey: 'id',
       cell: ({ row }) => {
@@ -160,7 +161,7 @@ export function getColumns({
       enableSorting: true,
       enableHiding: false,
       header: ({ column }) => {
-        return <SortableHeader column={column} label="State" />
+        return <SortableHeader column={column} label={i18n.t('sandboxesModule.headers.state')} />
       },
       cell: ({ row }) => (
         <div className="w-full truncate">
@@ -179,7 +180,7 @@ export function getColumns({
       enableSorting: true,
       enableHiding: false,
       header: ({ column }) => {
-        return <SortableHeader column={column} label="Snapshot" />
+        return <SortableHeader column={column} label={i18n.t('sandboxesModule.headers.snapshot')} />
       },
       cell: ({ row }) => {
         return (
@@ -200,7 +201,7 @@ export function getColumns({
       enableSorting: true,
       enableHiding: false,
       header: ({ column }) => {
-        return <SortableHeader column={column} label="Region" dataState="sortable" />
+        return <SortableHeader column={column} label={i18n.t('sandboxesModule.headers.region')} dataState="sortable" />
       },
       cell: ({ row }) => {
         return (
@@ -217,7 +218,7 @@ export function getColumns({
       enableSorting: false,
       enableHiding: false,
       header: () => {
-        return <span>Resources</span>
+        return <span>{i18n.t('sandboxesModule.headers.resources')}</span>
       },
       cell: ({ row }) => {
         return (
@@ -243,7 +244,7 @@ export function getColumns({
       enableSorting: false,
       enableHiding: true,
       header: () => {
-        return <span>Labels</span>
+        return <span>{i18n.t('sandboxesModule.headers.labels')}</span>
       },
       cell: ({ row }) => {
         const labels = Object.entries(row.original.labels ?? {})
@@ -256,7 +257,7 @@ export function getColumns({
             <TooltipTrigger asChild>
               {labelCount > 0 ? (
                 <div className="truncate w-fit bg-blue-100 rounded-sm text-blue-800 dark:bg-blue-950 dark:text-blue-200 px-1">
-                  {labelCount > 0 ? (labelCount === 1 ? '1 label' : `${labelCount} labels`) : '/'}
+                  {labelCount > 0 ? i18n.t('sandboxesModule.table.label', { count: labelCount }) : '/'}
                 </div>
               ) : (
                 <div className="truncate max-w-md text-muted-foreground/50">-</div>

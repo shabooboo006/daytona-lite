@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { SnapshotDto } from '@daytonaio/api-client'
 import { Loader2, X } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface SnapshotFilterProps {
   value: string[]
@@ -34,11 +35,15 @@ export function SnapshotFilterIndicator({
   hasMore,
   onChangeSnapshotSearchValue,
 }: SnapshotFilterProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex items-center h-6 gap-0.5 rounded-sm border border-border bg-muted/80 hover:bg-muted/50 text-sm">
       <Popover>
         <PopoverTrigger className="max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap text-muted-foreground px-2">
-          Snapshot: <span className="text-primary font-medium">{value.length} selected</span>
+          <span className="text-primary font-medium">
+            {t('sandboxesModule.filters.snapshotSelected', { count: value.length })}
+          </span>
         </PopoverTrigger>
 
         <PopoverContent className="p-0 w-[240px]" align="start">
@@ -68,6 +73,7 @@ export function SnapshotFilter({
   hasMore,
   onChangeSnapshotSearchValue,
 }: SnapshotFilterProps) {
+  const { t } = useTranslation()
   const [searchValue, setSearchValue] = useState('')
 
   const handleSelect = (snapshotName: string) => {
@@ -87,7 +93,12 @@ export function SnapshotFilter({
 
   return (
     <Command>
-      <CommandInput placeholder="Search..." className="" value={searchValue} onValueChange={setSearchValue}>
+      <CommandInput
+        placeholder={t('commandPalette.placeholder')}
+        className=""
+        value={searchValue}
+        onValueChange={handleSearchChange}
+      >
         <CommandInputButton
           onClick={() => {
             onFilterChange(undefined)
@@ -97,13 +108,13 @@ export function SnapshotFilter({
             }
           }}
         >
-          Clear
+          {t('common.clear')}
         </CommandInputButton>
       </CommandInput>
       {hasMore && (
         <div className="px-2 pb-2 mt-2">
           <div className="text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1">
-            Please refine your search to see more Snapshots.
+            {t('sandboxesModule.filters.refineSnapshotsSearch')}
           </div>
         </div>
       )}
@@ -111,11 +122,11 @@ export function SnapshotFilter({
         {isLoading ? (
           <div className="flex items-center justify-center py-6">
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            <span className="text-sm text-muted-foreground">Loading Snapshots...</span>
+            <span className="text-sm text-muted-foreground">{t('sandboxesModule.filters.loadingSnapshots')}</span>
           </div>
         ) : (
           <>
-            <CommandEmpty>No Snapshots found.</CommandEmpty>
+            <CommandEmpty>{t('sandboxesModule.filters.noSnapshotsFound')}</CommandEmpty>
             <CommandGroup>
               {snapshots.map((snapshot) => (
                 <CommandCheckboxItem

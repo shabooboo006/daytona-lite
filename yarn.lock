@@ -2750,7 +2750,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7.1.2, @babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.22.5, @babel/runtime@npm:^7.22.6, @babel/runtime@npm:^7.23.2, @babel/runtime@npm:^7.5.5, @babel/runtime@npm:^7.8.7":
+"@babel/runtime@npm:^7.1.2, @babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.22.5, @babel/runtime@npm:^7.22.6, @babel/runtime@npm:^7.23.2, @babel/runtime@npm:^7.28.4, @babel/runtime@npm:^7.5.5, @babel/runtime@npm:^7.8.7":
   version: 7.28.6
   resolution: "@babel/runtime@npm:7.28.6"
   checksum: 10c0/358cf2429992ac1c466df1a21c1601d595c46930a13c1d4662fde908d44ee78ec3c183aaff513ecb01ef8c55c3624afe0309eeeb34715672dbfadb7feedb2c0d
@@ -18058,6 +18058,7 @@ __metadata:
     gt-react: "npm:^10.0.8"
     gtx-cli: "npm:^2.6.24"
     husky: "npm:^9.1.7"
+    i18next: "npm:^25.8.14"
     ioredis: "npm:^5.5.0"
     is-ci: "npm:^4.1.0"
     isomorphic-ws: "npm:^5.0.0"
@@ -18103,6 +18104,7 @@ __metadata:
     react-day-picker: "npm:^9.7.0"
     react-dom: "npm:^19.1.0"
     react-error-boundary: "npm:^6.0.0"
+    react-i18next: "npm:^16.5.6"
     react-instantsearch: "npm:^7.16.0"
     react-instantsearch-dom: "npm:^6.40.4"
     react-number-format: "npm:^5.4.4"
@@ -22530,6 +22532,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"html-parse-stringify@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "html-parse-stringify@npm:3.0.1"
+  dependencies:
+    void-elements: "npm:3.1.0"
+  checksum: 10c0/159292753d48b84d216d61121054ae5a33466b3db5b446e2ffc093ac077a411a99ce6cbe0d18e55b87cf25fa3c5a86c4d8b130b9719ec9b66623259000c72c15
+  languageName: node
+  linkType: hard
+
 "html-void-elements@npm:^3.0.0":
   version: 3.0.0
   resolution: "html-void-elements@npm:3.0.0"
@@ -22841,6 +22852,20 @@ __metadata:
   dependencies:
     "@babel/runtime": "npm:^7.23.2"
   checksum: 10c0/57d249191e8a39bbbbe190cfa2e2bb651d0198e14444fe80453d3df8d02927de3c147c77724e9ae6c72fa241898cd761e3fdcd55d053db373471f1ac084bf345
+  languageName: node
+  linkType: hard
+
+"i18next@npm:^25.8.14":
+  version: 25.8.14
+  resolution: "i18next@npm:25.8.14"
+  dependencies:
+    "@babel/runtime": "npm:^7.28.4"
+  peerDependencies:
+    typescript: ^5
+  peerDependenciesMeta:
+    typescript:
+      optional: true
+  checksum: 10c0/1c736a48ab66c0e1b8094d4359d7864efd77bb0086b37021b0031ed76cfbe595c3c1ea2664b80589f4e5a5e61a94026959ce98218785db61781dce26d8595500
   languageName: node
   linkType: hard
 
@@ -31441,6 +31466,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-i18next@npm:^16.5.6":
+  version: 16.5.6
+  resolution: "react-i18next@npm:16.5.6"
+  dependencies:
+    "@babel/runtime": "npm:^7.28.4"
+    html-parse-stringify: "npm:^3.0.1"
+    use-sync-external-store: "npm:^1.6.0"
+  peerDependencies:
+    i18next: ">= 25.6.2"
+    react: ">= 16.8.0"
+    typescript: ^5
+  peerDependenciesMeta:
+    react-dom:
+      optional: true
+    react-native:
+      optional: true
+    typescript:
+      optional: true
+  checksum: 10c0/6bc70721c9a8d1e74af6e4a2d9123be099265c6a0d3fce35fe6f19b1484f3b0d5abf635d22115d5930d80574aa9612d5da41c5a829471e4697cbe99bcd83ed23
+  languageName: node
+  linkType: hard
+
 "react-instantsearch-core@npm:6.40.4":
   version: 6.40.4
   resolution: "react-instantsearch-core@npm:6.40.4"
@@ -37472,6 +37519,13 @@ __metadata:
   version: 1.1.2
   resolution: "vm-browserify@npm:1.1.2"
   checksum: 10c0/0cc1af6e0d880deb58bc974921320c187f9e0a94f25570fca6b1bd64e798ce454ab87dfd797551b1b0cc1849307421aae0193cedf5f06bdb5680476780ee344b
+  languageName: node
+  linkType: hard
+
+"void-elements@npm:3.1.0":
+  version: 3.1.0
+  resolution: "void-elements@npm:3.1.0"
+  checksum: 10c0/0b8686f9f9aa44012e9bd5eabf287ae0cde409b9a2854c5a2335cb83920c957668ac5876e3f0d158dd424744ac411a7270e64128556b451ed3bec875ef18534d
   languageName: node
   linkType: hard
 

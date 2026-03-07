@@ -32,6 +32,7 @@ import { ApiKeyResponse, CreateApiKeyPermissionsEnum } from '@daytonaio/api-clie
 import { useForm } from '@tanstack/react-form'
 import { Plus } from 'lucide-react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { Alert, AlertDescription, AlertTitle } from './ui/alert'
@@ -65,6 +66,7 @@ export const CreateApiKeyDialog: React.FC<CreateApiKeyDialogProps> = ({
   className,
   organizationId,
 }) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   const { reset: resetCreateApiKeyMutation, ...createApiKeyMutation } = useCreateApiKeyMutation()
@@ -87,7 +89,7 @@ export const CreateApiKeyDialog: React.FC<CreateApiKeyDialogProps> = ({
     },
     onSubmit: async ({ value }) => {
       if (!organizationId) {
-        toast.error('Select an organization to create an API key.')
+        toast.error(t('apiKeys.selectOrganization'))
         return
       }
 
@@ -99,9 +101,9 @@ export const CreateApiKeyDialog: React.FC<CreateApiKeyDialogProps> = ({
           expiresAt: value.expiresAt ?? null,
         })
 
-        toast.success('API key created successfully')
+        toast.success(t('apiKeys.createSuccess'))
       } catch (error) {
-        handleApiError(error, 'Failed to create API key')
+        handleApiError(error, t('apiKeys.createFailed'))
       }
     },
   })
@@ -131,19 +133,17 @@ export const CreateApiKeyDialog: React.FC<CreateApiKeyDialogProps> = ({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="default" size="sm" title="Create Key" className={className}>
+        <Button variant="default" size="sm" title={t('apiKeys.createKey')} className={className}>
           <Plus className="w-4 h-4" />
-          Create Key
+          {t('apiKeys.createKey')}
         </Button>
       </DialogTrigger>
 
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{createdKey ? 'API Key Created' : 'Create New API Key'}</DialogTitle>
+          <DialogTitle>{createdKey ? t('apiKeys.created') : t('apiKeys.createNew')}</DialogTitle>
           <DialogDescription>
-            {createdKey
-              ? 'Your API key has been created successfully.'
-              : 'Choose which actions this API key will be authorized to perform.'}
+            {createdKey ? t('apiKeys.createdDescription') : t('apiKeys.createDescription')}
           </DialogDescription>
         </DialogHeader>
         {createdKey ? (
@@ -164,7 +164,7 @@ export const CreateApiKeyDialog: React.FC<CreateApiKeyDialogProps> = ({
                   const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
                   return (
                     <Field data-invalid={isInvalid}>
-                      <FieldLabel htmlFor={field.name}>Key Name</FieldLabel>
+                      <FieldLabel htmlFor={field.name}>{t('apiKeys.keyName')}</FieldLabel>
                       <Input
                         aria-invalid={isInvalid}
                         id={field.name}
@@ -172,7 +172,7 @@ export const CreateApiKeyDialog: React.FC<CreateApiKeyDialogProps> = ({
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
-                        placeholder="Name"
+                        placeholder={t('apiKeys.keyNamePlaceholder')}
                       />
                       {field.state.meta.errors.length > 0 && field.state.meta.isTouched && (
                         <FieldError errors={field.state.meta.errors} />
@@ -185,14 +185,14 @@ export const CreateApiKeyDialog: React.FC<CreateApiKeyDialogProps> = ({
               <form.Field name="expiresAt">
                 {(field) => (
                   <Field>
-                    <FieldLabel htmlFor={field.name}>Expires</FieldLabel>
+                    <FieldLabel htmlFor={field.name}>{t('apiKeys.expires')}</FieldLabel>
                     <DatePicker
                       id={field.name}
                       value={field.state.value}
                       onChange={field.handleChange}
                       disabledBefore={new Date()}
                     />
-                    <FieldDescription>Optional expiration date for the API key.</FieldDescription>
+                    <FieldDescription>{t('apiKeys.expiresDescription')}</FieldDescription>
                   </Field>
                 )}
               </form.Field>
@@ -213,30 +213,25 @@ export const CreateApiKeyDialog: React.FC<CreateApiKeyDialogProps> = ({
                   }
                 }}
               >
-                <Label className="mb-1">Permissions</Label>
+                <Label className="mb-1">{t('apiKeys.permissions')}</Label>
 
                 <TabsList className="bg-muted w-full [&>*]:flex-1">
-                  <TabsTrigger value="full-access">Full Access</TabsTrigger>
-                  <TabsTrigger value="sandbox-access">Sandboxes</TabsTrigger>
-                  <TabsTrigger value="restricted-access">Restricted </TabsTrigger>
+                  <TabsTrigger value="full-access">{t('apiKeys.fullAccess')}</TabsTrigger>
+                  <TabsTrigger value="sandbox-access">{t('apiKeys.sandboxAccess')}</TabsTrigger>
+                  <TabsTrigger value="restricted-access">{t('apiKeys.restrictedAccess')}</TabsTrigger>
                 </TabsList>
                 <TabsContent value="sandbox-access" className="w-full">
                   <Alert variant="info">
                     <InfoIcon />
-                    <AlertTitle>Sandboxes Access</AlertTitle>
-                    <AlertDescription>
-                      This key grants read and write access to the Sandboxes resource.
-                    </AlertDescription>
+                    <AlertTitle>{t('apiKeys.sandboxAccess')}</AlertTitle>
+                    <AlertDescription>{t('apiKeys.accessDescription')}</AlertDescription>
                   </Alert>
                 </TabsContent>
                 <TabsContent value="full-access" className="w-full">
                   <Alert variant="info">
                     <InfoIcon />
-                    <AlertTitle>Full Access</AlertTitle>
-                    <AlertDescription>
-                      This key grants full access to all resources. For better security, we recommend creating a
-                      restricted key.
-                    </AlertDescription>
+                    <AlertTitle>{t('apiKeys.fullAccess')}</AlertTitle>
+                    <AlertDescription>{t('apiKeys.fullAccessDescription')}</AlertDescription>
                   </Alert>
                 </TabsContent>
                 <TabsContent value="restricted-access" className="w-full">
@@ -336,7 +331,7 @@ export const CreateApiKeyDialog: React.FC<CreateApiKeyDialogProps> = ({
         <DialogFooter>
           <DialogClose asChild>
             <Button type="button" variant="secondary">
-              Close
+              {t('common.close')}
             </Button>
           </DialogClose>
           {!createdKey && (
@@ -350,7 +345,7 @@ export const CreateApiKeyDialog: React.FC<CreateApiKeyDialogProps> = ({
                   disabled={!canSubmit || isSubmitting || !organizationId}
                 >
                   {isSubmitting && <Spinner />}
-                  Create
+                  {t('common.create')}
                 </Button>
               )}
             />
@@ -374,6 +369,7 @@ const iconProps = {
 function CreatedKeyDisplay({ createdKey, apiUrl }: { createdKey: ApiKeyResponse; apiUrl: string }) {
   const [copiedApiKey, copyApiKey] = useCopyToClipboard()
   const [copiedApiUrl, copyApiUrl] = useCopyToClipboard()
+  const { t } = useTranslation()
 
   const [apiKeyRevealed, setApiKeyRevealed] = useState(false)
 
@@ -385,7 +381,7 @@ function CreatedKeyDisplay({ createdKey, apiUrl }: { createdKey: ApiKeyResponse;
       </Alert>
       <FieldGroup className="gap-4">
         <Field>
-          <FieldLabel htmlFor="api-key">API Key</FieldLabel>
+          <FieldLabel htmlFor="api-key">{t('pages.apiKeys')}</FieldLabel>
 
           <InputGroup className="pr-1 flex-1">
             <InputGroupInput

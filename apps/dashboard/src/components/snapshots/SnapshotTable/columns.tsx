@@ -4,6 +4,7 @@
  */
 
 import { TimestampTooltip } from '@/components/TimestampTooltip'
+import i18n from '@/i18n/init'
 import { getRelativeTimeString } from '@/lib/utils'
 import { SnapshotDto, SnapshotState } from '@daytonaio/api-client'
 import { ColumnDef, RowData, Table } from '@tanstack/react-table'
@@ -95,7 +96,7 @@ const columns: ColumnDef<SnapshotDto>[] = [
                 }
               })
           }}
-          aria-label="Select all"
+          aria-label={i18n.t('sandboxesModule.table.selectAll')}
           disabled={!deletePermitted || loading}
           className="translate-y-[2px]"
         />
@@ -116,7 +117,7 @@ const columns: ColumnDef<SnapshotDto>[] = [
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
+          aria-label={i18n.t('sandboxesModule.table.selectRow')}
           disabled={!deletePermitted || loadingSnapshots[row.original.id] || loading}
           className="translate-y-[2px]"
         />
@@ -128,7 +129,7 @@ const columns: ColumnDef<SnapshotDto>[] = [
   {
     accessorKey: 'name',
     enableSorting: true,
-    header: ({ column }) => <SortableHeader column={column} label="Name" />,
+    header: ({ column }) => <SortableHeader column={column} label={i18n.t('snapshotsModule.headers.name')} />,
     cell: ({ row }) => {
       const snapshot = row.original
       return (
@@ -142,7 +143,7 @@ const columns: ColumnDef<SnapshotDto>[] = [
   {
     accessorKey: 'imageName',
     enableSorting: false,
-    header: 'Image',
+    header: i18n.t('snapshotsModule.headers.image'),
     cell: ({ row }) => {
       const snapshot = row.original
       if (!snapshot.imageName && snapshot.buildInfo) {
@@ -158,7 +159,7 @@ const columns: ColumnDef<SnapshotDto>[] = [
   {
     accessorKey: 'regionIds',
     enableSorting: false,
-    header: 'Region',
+    header: i18n.t('snapshotsModule.headers.region'),
     cell: ({ row, table }) => {
       const { getRegionName } = getMeta(table)
       const snapshot = row.original
@@ -202,7 +203,7 @@ const columns: ColumnDef<SnapshotDto>[] = [
   {
     id: 'resources',
     enableSorting: false,
-    header: 'Resources',
+    header: i18n.t('snapshotsModule.headers.resources'),
     cell: ({ row }) => {
       const snapshot = row.original
 
@@ -226,7 +227,7 @@ const columns: ColumnDef<SnapshotDto>[] = [
   {
     accessorKey: 'state',
     enableSorting: true,
-    header: ({ column }) => <SortableHeader column={column} label="State" />,
+    header: ({ column }) => <SortableHeader column={column} label={i18n.t('snapshotsModule.headers.state')} />,
     cell: ({ row }) => {
       const snapshot = row.original
       const variant = getStateBadgeVariant(snapshot.state)
@@ -253,7 +254,7 @@ const columns: ColumnDef<SnapshotDto>[] = [
   {
     accessorKey: 'createdAt',
     enableSorting: true,
-    header: ({ column }) => <SortableHeader column={column} label="Created" />,
+    header: ({ column }) => <SortableHeader column={column} label={i18n.t('snapshotsModule.headers.created')} />,
     cell: ({ row }) => {
       const snapshot = row.original
       if (snapshot.general) {
@@ -270,7 +271,7 @@ const columns: ColumnDef<SnapshotDto>[] = [
   {
     accessorKey: 'lastUsedAt',
     enableSorting: true,
-    header: ({ column }) => <SortableHeader column={column} label="Last Used" />,
+    header: ({ column }) => <SortableHeader column={column} label={i18n.t('snapshotsModule.headers.lastUsed')} />,
     cell: ({ row }) => {
       const snapshot = row.original
       if (snapshot.general || !snapshot.lastUsedAt) {
@@ -303,19 +304,19 @@ const columns: ColumnDef<SnapshotDto>[] = [
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
+              <span className="sr-only">{i18n.t('common.openMenu')}</span>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {showActivate && (
               <DropdownMenuItem onClick={() => onActivate(row.original)} disabled={loadingSnapshots[row.original.id]}>
-                Activate
+                {i18n.t('snapshotsModule.actions.activate')}
               </DropdownMenuItem>
             )}
             {showDeactivate && (
               <DropdownMenuItem onClick={() => onDeactivate(row.original)} disabled={loadingSnapshots[row.original.id]}>
-                Deactivate
+                {i18n.t('snapshotsModule.actions.deactivate')}
               </DropdownMenuItem>
             )}
             {showSeparator && <DropdownMenuSeparator />}
@@ -325,7 +326,7 @@ const columns: ColumnDef<SnapshotDto>[] = [
                 variant="destructive"
                 disabled={loadingSnapshots[row.original.id]}
               >
-                Delete
+                {i18n.t('snapshotsModule.actions.delete')}
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
@@ -351,12 +352,23 @@ const getStateBadgeVariant = (state: SnapshotState): BadgeProps['variant'] => {
 
 const getStateLabel = (state: SnapshotState) => {
   if (state === SnapshotState.REMOVING) {
-    return 'Deleting'
+    return i18n.t('snapshotsModule.states.deleting')
   }
-  return state
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ')
+  const stateLabels: Partial<Record<SnapshotState, string>> = {
+    [SnapshotState.ACTIVE]: i18n.t('snapshotsModule.states.active'),
+    [SnapshotState.INACTIVE]: i18n.t('snapshotsModule.states.inactive'),
+    [SnapshotState.ERROR]: i18n.t('snapshotsModule.states.error'),
+    [SnapshotState.BUILD_FAILED]: i18n.t('snapshotsModule.states.buildFailed'),
+    [SnapshotState.PENDING]: i18n.t('snapshotsModule.states.pending'),
+  }
+
+  return (
+    stateLabels[state] ??
+    state
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ')
+  )
 }
 
 export { columns }

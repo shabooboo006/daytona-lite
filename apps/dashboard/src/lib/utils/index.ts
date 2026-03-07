@@ -5,6 +5,7 @@
 
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import i18n, { getIntlLocale } from '@/i18n/init'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -28,13 +29,15 @@ export function getRelativeTimeString(
     if (absDiffInMinutes < 1)
       return {
         date,
-        relativeTimeString: isFuture ? 'shortly' : 'just now',
+        relativeTimeString: isFuture ? i18n.t('time.shortly') : i18n.t('time.justNow'),
       }
 
     if (absDiffInMinutes < 60) {
       return {
         date,
-        relativeTimeString: isFuture ? `in ${absDiffInMinutes}m` : `${absDiffInMinutes}m ago`,
+        relativeTimeString: isFuture
+          ? i18n.t('time.minuteIn', { count: absDiffInMinutes })
+          : i18n.t('time.minuteAgo', { count: absDiffInMinutes }),
       }
     }
 
@@ -42,7 +45,9 @@ export function getRelativeTimeString(
     if (hours < 24) {
       return {
         date,
-        relativeTimeString: isFuture ? `in ${hours}h` : `${hours}h ago`,
+        relativeTimeString: isFuture
+          ? i18n.t('time.hourIn', { count: hours })
+          : i18n.t('time.hourAgo', { count: hours }),
       }
     }
 
@@ -50,16 +55,16 @@ export function getRelativeTimeString(
     if (days < 365) {
       return {
         date,
-        relativeTimeString: isFuture ? `in ${days}d` : `${days}d ago`,
+        relativeTimeString: isFuture ? i18n.t('time.dayIn', { count: days }) : i18n.t('time.dayAgo', { count: days }),
       }
     }
 
     const years = Math.floor(days / 365)
     return {
       date,
-      relativeTimeString: isFuture ? `in ${years}y` : `${years}y ago`,
+      relativeTimeString: isFuture ? i18n.t('time.yearIn', { count: years }) : i18n.t('time.yearAgo', { count: years }),
     }
-  } catch (e) {
+  } catch {
     return { date: new Date(), relativeTimeString: fallback }
   }
 }
@@ -76,24 +81,34 @@ export function formatDuration(minutes: number): string {
   minutes = Math.abs(minutes)
 
   if (minutes < 60) {
-    return `${Math.floor(minutes)}m`
+    return i18n.t('time.duration.minute', { count: Math.floor(minutes) })
   }
 
   const hours = minutes / 60
   if (hours < 24) {
-    return `${Math.floor(hours)}h`
+    return i18n.t('time.duration.hour', { count: Math.floor(hours) })
   }
 
   const days = hours / 24
   if (days < 365) {
-    return `${Math.floor(days)}d`
+    return i18n.t('time.duration.day', { count: Math.floor(days) })
   }
 
   const years = days / 365
-  return `${Math.floor(years)}y`
+  return i18n.t('time.duration.year', { count: Math.floor(years) })
 }
 
-export function pluralize(count: number, singular: string, plural: string): string {
+export function pluralize(
+  count: number,
+  singular: string,
+  plural: string,
+  translationKey?: string,
+  interpolation?: Record<string, unknown>,
+): string {
+  if (translationKey) {
+    return i18n.t(translationKey, { count, ...interpolation })
+  }
+
   return count === 1 ? `${count} ${singular}` : `${count} ${plural}`
 }
 
@@ -107,11 +122,11 @@ export function formatTimestamp(timestamp: string | Date | undefined | null): st
     return '-'
   }
 
-  return new Date(timestamp).toLocaleString()
+  return new Date(timestamp).toLocaleString(getIntlLocale())
 }
 
 export function formatAmount(amount: number): string {
-  return Intl.NumberFormat('en-US', {
+  return Intl.NumberFormat(getIntlLocale(), {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,

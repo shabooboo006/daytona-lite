@@ -12,10 +12,12 @@ import { useSelectedOrganization } from '@/hooks/useSelectedOrganization'
 import { handleApiError } from '@/lib/error-handling'
 import { ApiKeyList, CreateApiKeyPermissionsEnum, OrganizationUserRoleEnum } from '@daytonaio/api-client'
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { ApiKeyTable } from '../components/ApiKeyTable'
 
 const Keys: React.FC = () => {
+  const { t } = useTranslation()
   const { apiUrl } = useConfig()
   const [loadingKeys, setLoadingKeys] = useState<Record<string, boolean>>({})
 
@@ -45,9 +47,9 @@ const Keys: React.FC = () => {
         name: key.name,
         organizationId: selectedOrganization.id,
       })
-      toast.success('API key revoked successfully')
+      toast.success(t('apiKeys.toasts.revoked'))
     } catch (error) {
-      handleApiError(error, 'Failed to revoke API key')
+      handleApiError(error, t('apiKeys.toasts.revokeFailed'))
     } finally {
       setLoadingKeys((prev) => ({ ...prev, [loadingId]: false }))
     }
@@ -68,7 +70,7 @@ const Keys: React.FC = () => {
   return (
     <PageLayout>
       <PageHeader>
-        <PageTitle>API Keys</PageTitle>
+        <PageTitle>{t('pages.apiKeys')}</PageTitle>
         <CreateApiKeyDialog
           className="ml-auto"
           availablePermissions={availablePermissions}

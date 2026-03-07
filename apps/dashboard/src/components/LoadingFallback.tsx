@@ -15,10 +15,12 @@ import {
 import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Skeleton } from './ui/skeleton'
 
 const LoadingFallback = () => {
   const [showLongLoadingMessage, setShowLongLoadingMessage] = useState(false)
+  const { t } = useTranslation()
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -68,9 +70,9 @@ const LoadingFallback = () => {
               animate={showLongLoadingMessage ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
               transition={{ duration: 0.35 }}
             >
-              <p className="text-sm text-muted-foreground text-center">This is taking longer than expected...</p>
+              <p className="text-sm text-muted-foreground text-center">{t('loading.longMessage')}</p>
               <p className="text-sm text-muted-foreground text-center">
-                If this issue persists, contact us at{' '}
+                {t('loading.contactSupport')}{' '}
                 <a href="mailto:support@daytona.io" className="text-primary underline">
                   support@daytona.io
                 </a>

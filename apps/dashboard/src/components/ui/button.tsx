@@ -7,6 +7,7 @@ import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
 import * as React from 'react'
 
+import { translateLiteralText, translateNode } from '@/i18n/literalTranslations'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
@@ -50,7 +51,16 @@ function Button({
   }) {
   const Comp = asChild ? Slot : 'button'
 
-  return <Comp data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props} />
+  return (
+    <Comp
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+      title={typeof props.title === 'string' ? translateLiteralText(props.title) : props.title}
+    >
+      {translateNode(props.children)}
+    </Comp>
+  )
 }
 
 export { Button, buttonVariants }

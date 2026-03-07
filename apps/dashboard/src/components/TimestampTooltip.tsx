@@ -4,7 +4,10 @@
  */
 
 import { format, formatDistanceToNow } from 'date-fns'
+import { enUS, zhCN } from 'date-fns/locale'
+import { getIntlLocale, normalizeUILanguage } from '@/i18n/init'
 import { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Separator } from './ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
@@ -15,12 +18,16 @@ interface TimestampTooltipProps {
 }
 
 export const TimestampTooltip = ({ children, timestamp, time = true }: TimestampTooltipProps) => {
+  const { i18n, t } = useTranslation()
+
   if (!timestamp) {
     return children
   }
 
   const date = new Date(timestamp)
-  const relativeTimeString = formatDistanceToNow(date, { addSuffix: true })
+  const language = normalizeUILanguage(i18n.resolvedLanguage)
+  const locale = language === 'zh-CN' ? zhCN : enUS
+  const relativeTimeString = formatDistanceToNow(date, { addSuffix: true, locale })
 
   const dateFormat = 'MMM d, yyyy'
   const timeFormat = 'HH:mm:ss'
@@ -33,17 +40,17 @@ export const TimestampTooltip = ({ children, timestamp, time = true }: Timestamp
     date.getUTCMinutes(),
     date.getUTCSeconds(),
   )
-  const utcDateFormatted = format(utcDate, dateFormat)
-  const utcTimeFormatted = format(utcDate, timeFormat)
+  const utcDateFormatted = format(utcDate, dateFormat, { locale })
+  const utcTimeFormatted = format(utcDate, timeFormat, { locale })
 
-  const localDateFormatted = format(date, dateFormat)
-  const localTimeFormatted = format(date, timeFormat)
+  const localDateFormatted = format(date, dateFormat, { locale })
+  const localTimeFormatted = format(date, timeFormat, { locale })
 
-  const timezoneFormatter = new Intl.DateTimeFormat('en-US', {
+  const timezoneFormatter = new Intl.DateTimeFormat(getIntlLocale(language), {
     timeZoneName: 'short',
   })
   const timezoneParts = timezoneFormatter.formatToParts(date)
-  const localTimezone = timezoneParts.find((part) => part.type === 'timeZoneName')?.value || 'Local'
+  const localTimezone = timezoneParts.find((part) => part.type === 'timeZoneName')?.value || t('time.local')
 
   return (
     <Tooltip>

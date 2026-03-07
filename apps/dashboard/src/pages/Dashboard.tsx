@@ -21,47 +21,53 @@ import { useSelectedOrganization } from '@/hooks/useSelectedOrganization'
 import { useSuspensionBanner } from '@/hooks/useSuspensionBanner'
 import { cn } from '@/lib/utils'
 import { BookOpen, BookSearchIcon, SlackIcon, SunMoon } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 function useDashboardCommands() {
   const { theme, setTheme } = useTheme()
+  const { t } = useTranslation()
 
   const helpCommands: CommandConfig[] = useMemo(
     () => [
       {
         id: 'open-slack',
-        label: 'Open Slack',
+        label: t('commandPalette.commands.openSlack'),
         icon: <SlackIcon className="w-4 h-4" />,
         onSelect: () => window.open(DAYTONA_SLACK_URL, '_blank'),
       },
       {
         id: 'open-docs',
-        label: 'Open Docs',
+        label: t('commandPalette.commands.openDocs'),
         icon: <BookOpen className="w-4 h-4" />,
         onSelect: () => window.open(DAYTONA_DOCS_URL, '_blank'),
       },
       {
         id: 'search-docs',
-        label: 'Search Docs',
+        label: t('commandPalette.commands.searchDocs'),
         icon: <BookSearchIcon className="w-4 h-4" />,
         page: 'search-docs',
       },
     ],
-    [],
+    [t],
   )
-  useRegisterCommands(helpCommands, { groupId: 'help', groupLabel: 'Help', groupOrder: 2 })
+  useRegisterCommands(helpCommands, { groupId: 'help', groupLabel: t('commandPalette.groups.help'), groupOrder: 2 })
 
   const globalCommands: CommandConfig[] = useMemo(
     () => [
       {
         id: 'toggle-theme',
-        label: 'Toggle Theme',
+        label: t('commandPalette.commands.toggleTheme'),
         icon: <SunMoon className="w-4 h-4" />,
         onSelect: () => setTheme(theme === 'dark' ? 'light' : 'dark'),
       },
     ],
-    [theme, setTheme],
+    [setTheme, t, theme],
   )
-  useRegisterCommands(globalCommands, { groupId: 'global', groupLabel: 'Global', groupOrder: 5 })
+  useRegisterCommands(globalCommands, {
+    groupId: 'global',
+    groupLabel: t('commandPalette.groups.global'),
+    groupOrder: 5,
+  })
 }
 
 const Dashboard: React.FC = () => {

@@ -5,6 +5,7 @@
 
 import * as React from 'react'
 
+import { translateNode } from '@/i18n/literalTranslations'
 import { cn } from '@/lib/utils'
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
@@ -61,7 +62,9 @@ const TableHead = React.forwardRef<
       className,
     )}
     {...props}
-  />
+  >
+    {translateNode(props.children)}
+  </th>
 ))
 TableHead.displayName = 'TableHead'
 
@@ -77,7 +80,9 @@ const TableCell = React.forwardRef<
       className,
     )}
     {...props}
-  />
+  >
+    {translateNode(props.children)}
+  </td>
 ))
 TableCell.displayName = 'TableCell'
 
