@@ -7,6 +7,13 @@ services:
     environment:
       # Default to slim image for faster startup
       - DEFAULT_SNAPSHOT=daytonaio/sandbox:0.5.0-slim
+      - LOCAL_IMAGE_MODE=true
+      - LOCAL_IMAGE_SCAN_ENABLED=true
+      - REGISTRY_FALLBACK_ENABLED=true
+      - AUTO_REGISTER_LOCAL_RUNNER=true
+      - ENABLE_DEFAULT_INTERNAL_REGISTRY=false
+      - ENABLE_DEFAULT_TRANSIENT_REGISTRY=false
+      - ENABLE_DEFAULT_BACKUP_REGISTRY=false
       - ADMIN_PASSWORD=changeme
       - ENCRYPTION_KEY=supersecretkey
       - ENCRYPTION_SALT=supersecretsalt
@@ -24,14 +31,6 @@ services:
       - POSTHOG_API_KEY=phc_bYtEsdMDrNLydXPD4tufkBrHKgfO2zbycM30LOowYNv
       - POSTHOG_HOST=https://d18ag4dodbta3l.cloudfront.net
       - POSTHOG_ENVIRONMENT=local
-      - TRANSIENT_REGISTRY_URL=http://registry:6000
-      - TRANSIENT_REGISTRY_ADMIN=admin
-      - TRANSIENT_REGISTRY_PASSWORD=password
-      - TRANSIENT_REGISTRY_PROJECT_ID=daytona
-      - INTERNAL_REGISTRY_URL=http://registry:6000
-      - INTERNAL_REGISTRY_ADMIN=admin
-      - INTERNAL_REGISTRY_PASSWORD=password
-      - INTERNAL_REGISTRY_PROJECT_ID=daytona
       - S3_ENDPOINT=http://minio:9000
       - S3_STS_ENDPOINT=http://minio:9000/minio/v1/assume-role
       - S3_REGION=us-east-1
@@ -55,6 +54,7 @@ services:
       - DEFAULT_RUNNER_MEMORY=8
       - DEFAULT_RUNNER_DISK=50
       - DEFAULT_RUNNER_NAME=default
+      - DEFAULT_RUNNER_DOCKER_MODE=host
       - DEFAULT_REGION_ID=default
       - DEFAULT_REGION_NAME=default
       - DEFAULT_REGION_ENFORCE_QUOTAS=false
@@ -85,7 +85,6 @@ services:
       - db
       - runner
       - redis
-      - registry
       - minio
 
   proxy:
@@ -119,6 +118,9 @@ services:
       - AWS_SECRET_ACCESS_KEY=minioadmin
       - AWS_DEFAULT_BUCKET=daytona
       - DAYTONA_API_URL=http://api:3000/api
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - RUNNER_DOCKER_MODE=host
+      - RUNNER_AUTO_REGISTER=true
       - RUNNER_DOMAIN=runner
       - SSH_GATEWAY_ENABLE=true
       - SSH_PUBLIC_KEY=c3NoLXJzYSBBQUFBQjNOemFDMXljMkVBQUFBREFRQUJBQUFCZ1FEZUtocFdOYVhVNkpSMnJXekc1NlZJeksrcmsrdForcCtVUmwyeWF5cWRnZGg2bnVOL1NtVnJsYmV4MGlrRVZZemdRWUIwWno5M2dqOVhxSkd4WjJiMHVoSDFzNkp2bnhKZVdIK05rbjBNMzRiRjZkeVloZ3o4M0JaTitWcElJdnVDT1pxYWE4VnlRWjhPdjVLMU00enlmQnFCMld3ejcwZEVWUnFaMnVZckd5U0RqUUIrU3hRQ3phY0djb2JRQTFUd2QxdEJvSk5BaVpPWXFSU3d6TmNoTk5hZHlxSHRGdkZRQ0hhNjZWaVBmQ0FVUGt2cEN6ZGh3TmJGdVhGVWkxbnZOWkx4M056RU41M05LWUhZcWU3Y3dXZkI4QjBoRDhDd3hmSDd6T0o1b1RCMnBMVVlsUWpZRDNsN3k4SkFTbDZpYkpuR1A1SWczVXpZWlRIdUdkNzVXWktnNTRJTVROQlFPMWpJdE9HL0orUm1XbzB0YTdpRkF6ZExyL1BmbDdXTVMwbEZhSm9scTdUVmJLUG1JODFTOU04VEgrbXhLbGZ5b2NqZzhwSUdlQUllcEo3dXl1Vk1xT2wxeVVuSFNycDRlVEVlR0k3NlpCOFRoUzhkYnBLUTIvb2RYMHkwc3FSZDI0Y2lGdnM0dnZVaW80NFdYNlNWRG54dXpWRHc1Rzg9IGRheXRvbmFAMDQwNjZiZDIwY2Vi
@@ -126,6 +128,8 @@ services:
       - daytona-network
     ports:
       - 3003:3003
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     privileged: true
     restart: always
 
@@ -162,6 +166,8 @@ services:
   registry-ui:
     image: joxit/docker-registry-ui:main
     restart: always
+    profiles:
+      - registry
     environment:
       - SINGLE_REGISTRY=true
       - REGISTRY_TITLE=Docker Registry UI
@@ -182,6 +188,8 @@ services:
   registry:
     image: registry:2.8.2
     restart: always
+    profiles:
+      - registry
     environment:
       REGISTRY_HTTP_HEADERS_Access-Control-Allow-Origin: '[http://registry-ui.example.com]'
       REGISTRY_HTTP_HEADERS_Access-Control-Allow-Methods: '[HEAD,GET,OPTIONS,DELETE]'

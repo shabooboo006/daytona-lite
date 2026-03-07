@@ -25,6 +25,8 @@ services:
 
   registry:
     image: registry:2.8.2
+    profiles:
+      - registry
     environment:
       REGISTRY_STORAGE_DELETE_ENABLED: 'true'
       REGISTRY_HTTP_ADDR: registry:6000
@@ -38,6 +40,8 @@ services:
 
   registry-ui:
     image: joxit/docker-registry-ui:main
+    profiles:
+      - registry
     environment:
       - SINGLE_REGISTRY=true
       - REGISTRY_TITLE=Daytona Dev Registry UI
@@ -55,8 +59,6 @@ services:
     ports:
       - "5100:80"
     restart: unless-stopped
-    profiles:
-      - tools
 
   minio:
     image: minio/minio:latest
@@ -75,7 +77,10 @@ services:
     restart: unless-stopped
 
   runner:
-    image: daytonaio/daytona-runner
+    image: daytona-lite-runner-dev
+    build:
+      context: ..
+      dockerfile: apps/runner/Dockerfile
     environment:
       - ENVIRONMENT=development
       - API_PORT=3003
@@ -88,7 +93,15 @@ services:
       - AWS_SECRET_ACCESS_KEY=minioadmin
       - AWS_DEFAULT_BUCKET=daytona
       - DAYTONA_API_URL=${DAYTONA_API_URL:-http://host.docker.internal:3001/api}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - RUNNER_DOCKER_MODE=${DEFAULT_RUNNER_DOCKER_MODE:-host}
+      - RUNNER_AUTO_REGISTER=true
       - RUNNER_DOMAIN=runner
+      - RUNNER_ADVERTISE_DOMAIN=localhost
+      - RUNNER_ADVERTISE_API_URL=http://localhost:3003
+      - RUNNER_ADVERTISE_PROXY_URL=http://localhost:3003
+      - RUNNER_STATIC_BINARIES_DIR=/tmp/daytona-runner-binaries
+      - CONTAINER_NETWORK=daytona-dev_daytona-dev-network
       - SSH_GATEWAY_ENABLE=false
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -96,11 +109,13 @@ services:
       - daytona-dev-network
     ports:
       - "3003:3003"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/daytona-runner-binaries:/tmp/daytona-runner-binaries
     privileged: true
     depends_on:
       - db
       - redis
-      - registry
       - minio
     restart: unless-stopped
 
