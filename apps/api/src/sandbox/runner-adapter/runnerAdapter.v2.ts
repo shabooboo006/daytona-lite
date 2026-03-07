@@ -4,6 +4,7 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common'
+import axios from 'axios'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository, IsNull, Not } from 'typeorm'
 import {
@@ -13,6 +14,7 @@ import {
   RunnerSnapshotInfo,
   StartSandboxResponse,
   SnapshotDigestResponse,
+  LocalImage,
 } from './runnerAdapter'
 import { Runner } from '../entities/runner.entity'
 import { Sandbox } from '../entities/sandbox.entity'
@@ -45,6 +47,7 @@ import { SnapshotStateError } from '../errors/snapshot-state-error'
 export class RunnerAdapterV2 implements RunnerAdapter {
   private readonly logger = new Logger(RunnerAdapterV2.name)
   private runner: Runner
+  private axiosInstance = axios.create()
 
   constructor(
     private readonly sandboxRepository: SandboxRepository,
@@ -55,6 +58,15 @@ export class RunnerAdapterV2 implements RunnerAdapter {
 
   async init(runner: Runner): Promise<void> {
     this.runner = runner
+    if (runner.apiUrl) {
+      this.axiosInstance = axios.create({
+        baseURL: runner.apiUrl,
+        headers: {
+          Authorization: `Bearer ${runner.apiKey}`,
+        },
+        timeout: 30_000,
+      })
+    }
   }
 
   async healthCheck(_signal?: AbortSignal): Promise<void> {
@@ -495,6 +507,17 @@ export class RunnerAdapterV2 implements RunnerAdapter {
       hash: resultMetadata?.hash,
       sizeGB: resultMetadata?.sizeGB,
     }
+  }
+
+  async listLocalImages(query?: string): Promise<LocalImage[]> {
+    if (!this.runner.apiUrl) {
+      return []
+    }
+
+    const response = await this.axiosInstance.get<LocalImage[]>('/images/local', {
+      params: query ? { q: query } : undefined,
+    })
+    return response.data
   }
 
   async updateNetworkSettings(

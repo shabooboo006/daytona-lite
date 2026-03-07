@@ -19,6 +19,8 @@ import { SnapshotRunner } from './snapshot-runner.entity'
 import { SnapshotState } from '../enums/snapshot-state.enum'
 import { BuildInfo } from './build-info.entity'
 import { SnapshotRegion } from './snapshot-region.entity'
+import { SnapshotSourceType } from '../enums/snapshot-source-type.enum'
+import { SnapshotStorageMode } from '../enums/snapshot-storage-mode.enum'
 
 @Entity()
 @Unique(['organizationId', 'name'])
@@ -49,6 +51,20 @@ export class Snapshot {
 
   @Column({ nullable: true })
   ref?: string
+
+  @Column({
+    type: 'enum',
+    enum: SnapshotSourceType,
+    default: SnapshotSourceType.REGISTRY_IMAGE,
+  })
+  sourceType = SnapshotSourceType.REGISTRY_IMAGE
+
+  @Column({
+    type: 'enum',
+    enum: SnapshotStorageMode,
+    default: SnapshotStorageMode.REGISTRY,
+  })
+  storageMode = SnapshotStorageMode.REGISTRY
 
   @Column({
     type: 'enum',

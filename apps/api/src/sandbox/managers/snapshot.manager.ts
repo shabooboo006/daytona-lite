@@ -43,6 +43,7 @@ import { BadRequestError } from '../../exceptions/bad-request.exception'
 import { SandboxRepository } from '../repositories/sandbox.repository'
 import { SnapshotInfoResponse } from '@daytonaio/runner-api-client'
 import { SnapshotActivatedEvent } from '../events/snapshot-activated.event'
+import { SnapshotStorageMode } from '../enums/snapshot-storage-mode.enum'
 
 const SYNC_AGAIN = 'sync-again'
 const DONT_SYNC_AGAIN = 'dont-sync-again'
@@ -119,6 +120,11 @@ export class SnapshotManager implements TrackableJobExecutions, OnApplicationShu
     const results = await Promise.allSettled(
       snapshots.map(async (snapshot) => {
         const regions = await this.snapshotService.getSnapshotRegions(snapshot.id)
+
+        if (snapshot.storageMode === SnapshotStorageMode.LOCAL_ONLY) {
+          await Promise.all(regions.map((region) => this.snapshotService.refreshLocalSnapshotRunners(snapshot, region.id)))
+          return
+        }
 
         const sharedRegionIds = regions.filter((r) => r.organizationId === null).map((r) => r.id)
         const organizationRegionIds = regions
@@ -563,14 +569,20 @@ export class SnapshotManager implements TrackableJobExecutions, OnApplicationShu
 
         // Only remove snapshot runners if no other snapshots depend on them
         if (countActiveSnapshots === 0) {
-          await this.snapshotRunnerRepository.update(
-            {
+          if (snapshot.storageMode === SnapshotStorageMode.LOCAL_ONLY) {
+            await this.snapshotRunnerRepository.delete({
               snapshotRef: snapshot.ref,
-            },
-            {
-              state: SnapshotRunnerState.REMOVING,
-            },
-          )
+            })
+          } else {
+            await this.snapshotRunnerRepository.update(
+              {
+                snapshotRef: snapshot.ref,
+              },
+              {
+                state: SnapshotRunnerState.REMOVING,
+              },
+            )
+          }
         }
 
         await this.snapshotRepository.remove(snapshot)
@@ -695,6 +707,14 @@ export class SnapshotManager implements TrackableJobExecutions, OnApplicationShu
   }
 
   async handleSnapshotStateRemoving(snapshot: Snapshot): Promise<SyncState> {
+    if (snapshot.storageMode === SnapshotStorageMode.LOCAL_ONLY) {
+      await this.snapshotRunnerRepository.delete({
+        snapshotRef: snapshot.ref,
+      })
+      await this.snapshotRepository.remove(snapshot)
+      return DONT_SYNC_AGAIN
+    }
+
     const snapshotRunnerItems = await this.snapshotRunnerRepository.find({
       where: {
         snapshotRef: snapshot.ref,
@@ -748,6 +768,18 @@ export class SnapshotManager implements TrackableJobExecutions, OnApplicationShu
       } else {
         return DONT_SYNC_AGAIN
       }
+    }
+
+    if (snapshot.storageMode === SnapshotStorageMode.LOCAL_ONLY) {
+      if (snapshotRunner) {
+        snapshotRunner.state = SnapshotRunnerState.READY
+        await this.snapshotRunnerRepository.save(snapshotRunner)
+      } else {
+        await this.runnerService.createSnapshotRunnerEntry(runner.id, snapshot.ref, SnapshotRunnerState.READY)
+      }
+
+      await this.updateSnapshotState(snapshot.id, SnapshotState.ACTIVE)
+      return DONT_SYNC_AGAIN
     }
 
     const internalRegistry = await this.dockerRegistryService.getAvailableInternalRegistry(runner.region)
@@ -875,14 +907,16 @@ export class SnapshotManager implements TrackableJobExecutions, OnApplicationShu
 
       const runnerAdapter = await this.runnerAdapterFactory.create(runner)
 
-      registry.url = registry.url.replace(/^(https?:\/\/)/, '')
+      if (registry) {
+        registry.url = registry.url.replace(/^(https?:\/\/)/, '')
+      }
       // Runner returns immediately; polling for completion is handled by handleCheckInitialRunnerSnapshot
       await runnerAdapter.buildSnapshot(
         snapshot.buildInfo,
         snapshot.organizationId,
         sourceRegistries.length > 0 ? sourceRegistries : undefined,
         registry ?? undefined,
-        true,
+        snapshot.storageMode === SnapshotStorageMode.REGISTRY,
       )
     } catch (err) {
       this.logger.error(`Error building snapshot ${snapshot.name}: ${fromAxiosError(err)}`)
