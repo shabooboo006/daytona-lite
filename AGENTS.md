@@ -2,6 +2,10 @@
 
 This file provides guidance to Codex when working with code in this repository.
 
+## 全局同步规则
+
+- `AGENTS.md` 与 `CLAUDE.md` 应互为同步文件；任一方发生变更时，另一方对应内容也必须同步更新，以同时支持 Codex 与 Claude Code 读取，更好支持 Vibe Coding 协作
+
 ## 项目概述
 
 **Daytona Lite** 是 [Daytona](https://github.com/daytonaio/daytona) 的精简私有化部署版本，保留核心 Sandbox 管理能力，移除了 SaaS 相关组件，并将认证方式改为 **Admin Password + API Key** 双模式。
@@ -46,12 +50,14 @@ scripts/           本地开发辅助脚本
 优先使用仓库内封装好的脚本，而不是手写长命令：
 
 ```bash
-yarn dev:doctor       # 检查本地开发环境
-yarn dev:start        # 启动开发依赖（Postgres / Redis / MinIO / Registry）
+yarn dev              # 推荐：一键启动基础设施 + API + Dashboard
+yarn dev:doctor       # 检查本地开发环境、系统平台与镜像架构
+yarn dev:start        # 启动开发依赖（Postgres / Redis / MinIO / Runner）
+yarn dev:runner-local # 显式启用本地源码构建 Runner
 yarn dev:reset        # 删除开发 volumes 并从头初始化开发依赖
 yarn dev:api          # 本机启动 API（热重载）
 yarn dev:dashboard    # 本机启动 Dashboard
-yarn dev:full         # 一键启动开发环境
+yarn dev:full         # 兼容旧入口，等价于 yarn dev
 yarn dev:stop         # 停止开发依赖
 ```
 
@@ -59,6 +65,9 @@ yarn dev:stop         # 停止开发依赖
 
 - 开发依赖默认来自 `docker/docker-compose.dev.yml`
 - `scripts/dev.sh` 会在缺少 `apps/api/.env` 时自动从 `.env.example` 生成
+- `yarn dev` 默认使用预构建 multi-arch Runner 镜像，`yarn dev:runner-local` 才会显式构建本地 Runner
+- `scripts/dev.sh` 会在启动前自动探测 Host / Docker 平台，并明确区分 macOS 宿主机与 Docker Desktop Linux runtime
+- `scripts/dev.sh` 会在启动前自动修复本地缓存的错误架构基础设施镜像
 - 本机开发 API 时，脚本会自动将容器环境里的 `db`、`redis`、`minio` 等地址改写为 `localhost`
 - Dashboard 默认运行在 `http://localhost:3000`
 - API 本机开发端口来自 `apps/api/.env` 的 `PORT`，默认是 `3001`
@@ -174,6 +183,13 @@ yarn generate:api-client
 - Dashboard 调用 `POST /api/admin/login` 获取 JWT
 - 后续请求走 `CombinedAuthGuard`
 - 启动时通过 `/api/config` 加载运行时配置
+
+Dashboard 界面约束：
+
+- 前端界面必须支持 `zh-CN` 与 `en` 切换，默认语言为中文。
+- 新增或修改 Dashboard 用户可见文案时，必须同时补齐中英文，不允许只写英文界面文案。
+- 表单、列表、表格列名、筛选器、分页、弹窗、toast、命令面板、侧边栏、组织切换菜单等前端可控文案都属于国际化范围。
+- 语言切换后界面应即时生效，并保持刷新后仍使用上次选择的语言。
 
 ### Lite 版本认证机制
 

@@ -21,6 +21,20 @@ NC='\033[0m'
 
 DOCKER_COMPOSE_BIN=""
 DOCKER_COMPOSE_SUBCMD=""
+HOST_OS=""
+HOST_ARCH=""
+DOCKER_OS=""
+DOCKER_ARCH=""
+DOCKER_PLATFORM=""
+DOCKER_CONTEXT=""
+ROSETTA_TRANSLATED=""
+EFFECTIVE_DOCKER_DEFAULT_PLATFORM=""
+TEMP_COMPOSE_OVERRIDE_FILE=""
+FALLBACK_SERVICES=()
+FALLBACK_PLATFORMS=()
+FALLBACK_IMAGES=()
+RUNNER_DEV_MODE="${RUNNER_DEV_MODE:-prebuilt}"
+RUNNER_PREBUILT_IMAGE="${DAYTONA_DEV_RUNNER_IMAGE:-daytonaio/daytona-runner:latest}"
 
 log_info() {
   printf "%b\n" "${BLUE}[INFO]${NC} $1"
@@ -36,6 +50,302 @@ log_warn() {
 
 log_error() {
   printf "%b\n" "${RED}[ERROR]${NC} $1"
+}
+
+cleanup_runtime_artifacts() {
+  if [ -n "${TEMP_COMPOSE_OVERRIDE_FILE:-}" ] && [ -f "$TEMP_COMPOSE_OVERRIDE_FILE" ]; then
+    rm -f "$TEMP_COMPOSE_OVERRIDE_FILE"
+  fi
+  TEMP_COMPOSE_OVERRIDE_FILE=""
+}
+
+trap cleanup_runtime_artifacts EXIT
+
+normalize_os() {
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    darwin)
+      echo "darwin"
+      ;;
+    linux)
+      echo "linux"
+      ;;
+    *)
+      printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+      ;;
+  esac
+}
+
+normalize_arch() {
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    amd64|x86_64)
+      echo "amd64"
+      ;;
+    arm64|aarch64|arm64/v8)
+      echo "arm64"
+      ;;
+    *)
+      printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+      ;;
+  esac
+}
+
+csv_contains() {
+  local csv="$1"
+  local needle="$2"
+
+  case ",$csv," in
+    *",$needle,"*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+append_csv_value() {
+  local csv="$1"
+  local value="$2"
+
+  if [ -z "$value" ]; then
+    echo "$csv"
+    return 0
+  fi
+
+  if [ -z "$csv" ]; then
+    echo "$value"
+    return 0
+  fi
+
+  if csv_contains "$csv" "$value"; then
+    echo "$csv"
+  else
+    echo "$csv,$value"
+  fi
+}
+
+compose_engine_label() {
+  if [ "$DOCKER_COMPOSE_BIN" = "docker" ]; then
+    echo "docker compose"
+  else
+    echo "docker-compose"
+  fi
+}
+
+service_profile() {
+  case "$1" in
+    registry|registry-ui)
+      echo "registry"
+      ;;
+    *)
+      echo ""
+      ;;
+  esac
+}
+
+service_image() {
+  case "$1" in
+    db)
+      echo "postgres:18"
+      ;;
+    redis)
+      echo "redis:7-alpine"
+      ;;
+    minio)
+      echo "minio/minio:latest"
+      ;;
+    registry)
+      echo "registry:2.8.2"
+      ;;
+    registry-ui)
+      echo "joxit/docker-registry-ui:main"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+service_enabled() {
+  local service="$1"
+  local active_profiles_csv="$2"
+  local required_profile
+
+  required_profile="$(service_profile "$service")"
+  if [ -z "$required_profile" ]; then
+    return 0
+  fi
+
+  csv_contains "$active_profiles_csv" "$required_profile"
+}
+
+collect_active_profiles_csv() {
+  local profiles_csv=""
+  local profile_name
+  local previous_ifs
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --tools)
+        profiles_csv="$(append_csv_value "$profiles_csv" "tools")"
+        ;;
+      --observability)
+        profiles_csv="$(append_csv_value "$profiles_csv" "observability")"
+        ;;
+      --full)
+        profiles_csv="$(append_csv_value "$profiles_csv" "tools")"
+        profiles_csv="$(append_csv_value "$profiles_csv" "observability")"
+        ;;
+    esac
+    shift
+  done
+
+  if [ -n "${COMPOSE_PROFILES:-}" ]; then
+    previous_ifs="$IFS"
+    IFS=','
+    for profile_name in ${COMPOSE_PROFILES}; do
+      profile_name="$(printf '%s' "$profile_name" | tr -d '[:space:]')"
+      profiles_csv="$(append_csv_value "$profiles_csv" "$profile_name")"
+    done
+    IFS="$previous_ifs"
+  fi
+
+  echo "$profiles_csv"
+}
+
+detect_host_platform() {
+  HOST_OS="$(normalize_os "$(uname -s 2>/dev/null || echo unknown)")"
+  HOST_ARCH="$(normalize_arch "$(uname -m 2>/dev/null || echo unknown)")"
+}
+
+detect_rosetta_status() {
+  ROSETTA_TRANSLATED=""
+
+  if [ "${HOST_OS:-}" != "darwin" ] || ! command -v sysctl >/dev/null 2>&1; then
+    return 0
+  fi
+
+  ROSETTA_TRANSLATED="$(sysctl -in sysctl.proc_translated 2>/dev/null || true)"
+}
+
+detect_docker_platform() {
+  local docker_version
+  local docker_os
+  local docker_arch
+
+  DOCKER_CONTEXT="$(docker context show 2>/dev/null || echo "unknown")"
+  docker_version="$(docker version --format '{{.Server.Os}} {{.Server.Arch}}' 2>/dev/null || true)"
+  if [ -z "$docker_version" ]; then
+    docker_version="$(docker info --format '{{.OSType}} {{.Architecture}}' 2>/dev/null || true)"
+  fi
+
+  docker_os="$(printf '%s' "$docker_version" | awk '{print $1}')"
+  docker_arch="$(printf '%s' "$docker_version" | awk '{print $2}')"
+
+  if [ -z "$docker_os" ] || [ -z "$docker_arch" ]; then
+    DOCKER_OS=""
+    DOCKER_ARCH=""
+    DOCKER_PLATFORM=""
+    EFFECTIVE_DOCKER_DEFAULT_PLATFORM=""
+    return 1
+  fi
+
+  DOCKER_OS="$(normalize_os "$docker_os")"
+  DOCKER_ARCH="$(normalize_arch "$docker_arch")"
+  DOCKER_PLATFORM="${DOCKER_OS}/${DOCKER_ARCH}"
+  EFFECTIVE_DOCKER_DEFAULT_PLATFORM="$DOCKER_PLATFORM"
+}
+
+inspect_local_image_platform() {
+  docker image inspect "$1" --format '{{.Os}}/{{.Architecture}}' 2>/dev/null || true
+}
+
+remote_image_supports_platform() {
+  local image="$1"
+  local platform="$2"
+  local os="${platform%%/*}"
+  local arch="${platform##*/}"
+  local manifest
+
+  manifest="$(docker manifest inspect "$image" 2>/dev/null | tr -d '[:space:]' || true)"
+  if [ -z "$manifest" ]; then
+    return 1
+  fi
+
+  if printf '%s' "$manifest" | grep -Eq "\"platform\":\\{\"architecture\":\"${arch}\"[^}]*\"os\":\"${os}\""; then
+    return 0
+  fi
+
+  if printf '%s' "$manifest" | grep -Eq "\"platform\":\\{\"os\":\"${os}\"[^}]*\"architecture\":\"${arch}\""; then
+    return 0
+  fi
+
+  if printf '%s' "$manifest" | grep -Eq "\"architecture\":\"${arch}\"[^}]*\"os\":\"${os}\""; then
+    return 0
+  fi
+
+  if printf '%s' "$manifest" | grep -Eq "\"os\":\"${os}\"[^}]*\"architecture\":\"${arch}\""; then
+    return 0
+  fi
+
+  return 1
+}
+
+record_service_fallback() {
+  local service="$1"
+  local platform="$2"
+  local image="$3"
+  local idx
+
+  for idx in "${!FALLBACK_SERVICES[@]}"; do
+    if [ "${FALLBACK_SERVICES[$idx]}" = "$service" ]; then
+      FALLBACK_PLATFORMS[$idx]="$platform"
+      FALLBACK_IMAGES[$idx]="$image"
+      return 0
+    fi
+  done
+
+  FALLBACK_SERVICES+=("$service")
+  FALLBACK_PLATFORMS+=("$platform")
+  FALLBACK_IMAGES+=("$image")
+}
+
+write_platform_override_file() {
+  local idx
+
+  cleanup_runtime_artifacts
+  TEMP_COMPOSE_OVERRIDE_FILE="$(mktemp "${TMPDIR:-/tmp}/daytona-dev-platform.XXXXXX.yml")"
+
+  {
+    echo "services:"
+    for idx in "${!FALLBACK_SERVICES[@]}"; do
+      echo "  ${FALLBACK_SERVICES[$idx]}:"
+      echo "    platform: ${FALLBACK_PLATFORMS[$idx]}"
+    done
+
+    if [ "${RUNNER_DEV_MODE}" = "local" ]; then
+      echo "  runner:"
+      echo "    image: daytona-lite-runner-dev"
+      echo "    build:"
+      echo "      context: ${ROOT_DIR}"
+      echo "      dockerfile: ${ROOT_DIR}/apps/runner/Dockerfile"
+    fi
+  } >"$TEMP_COMPOSE_OVERRIDE_FILE"
+}
+
+normalize_runner_dev_mode() {
+  case "$(printf '%s' "$RUNNER_DEV_MODE" | tr '[:upper:]' '[:lower:]')" in
+    ""|prebuilt|remote)
+      RUNNER_DEV_MODE="prebuilt"
+      ;;
+    local)
+      RUNNER_DEV_MODE="local"
+      ;;
+    *)
+      log_error "不支持的 RUNNER_DEV_MODE=${RUNNER_DEV_MODE}，可选值为 prebuilt 或 local"
+      exit 1
+      ;;
+  esac
 }
 
 ensure_node_toolchain() {
@@ -162,10 +472,20 @@ detect_compose_cmd() {
 }
 
 compose_cmd() {
+  local compose_files=(-f "$COMPOSE_FILE")
+
+  if [ -n "${TEMP_COMPOSE_OVERRIDE_FILE:-}" ] && [ -f "$TEMP_COMPOSE_OVERRIDE_FILE" ]; then
+    compose_files+=(-f "$TEMP_COMPOSE_OVERRIDE_FILE")
+  fi
+
   if [ "$DOCKER_COMPOSE_BIN" = "docker" ]; then
-    docker compose -f "$COMPOSE_FILE" "$@"
+    DOCKER_DEFAULT_PLATFORM="${EFFECTIVE_DOCKER_DEFAULT_PLATFORM:-${DOCKER_DEFAULT_PLATFORM:-}}" \
+      DAYTONA_DEV_RUNNER_IMAGE="${RUNNER_PREBUILT_IMAGE}" \
+      docker compose "${compose_files[@]}" "$@"
   else
-    docker-compose -f "$COMPOSE_FILE" "$@"
+    DOCKER_DEFAULT_PLATFORM="${EFFECTIVE_DOCKER_DEFAULT_PLATFORM:-${DOCKER_DEFAULT_PLATFORM:-}}" \
+      DAYTONA_DEV_RUNNER_IMAGE="${RUNNER_PREBUILT_IMAGE}" \
+      docker-compose "${compose_files[@]}" "$@"
   fi
 }
 
@@ -234,11 +554,186 @@ get_api_env_value() {
   fi
 }
 
+log_platform_context() {
+  local host_summary="${HOST_OS:-unknown}/${HOST_ARCH:-unknown}"
+  local docker_summary="${DOCKER_PLATFORM:-unknown}"
+  local message="Host platform: ${host_summary}, Docker runtime platform: ${docker_summary}"
+
+  if [ -n "${DOCKER_CONTEXT:-}" ]; then
+    message="${message}, Context: ${DOCKER_CONTEXT}"
+  fi
+
+  if [ "${HOST_OS:-}" = "darwin" ]; then
+    case "${ROSETTA_TRANSLATED:-}" in
+      1)
+        message="${message}, Shell: rosetta"
+        ;;
+      0)
+        message="${message}, Shell: native"
+        ;;
+    esac
+  fi
+
+  log_info "$message"
+
+  if [ "${HOST_OS:-}" = "darwin" ] && [ "${HOST_ARCH:-}" = "arm64" ] && [ "${DOCKER_PLATFORM:-}" = "linux/arm64" ]; then
+    log_info "检测到 macOS ARM 宿主机，API / Dashboard 将在本机运行，Docker Desktop Linux runtime 将承载开发容器。"
+  fi
+
+  if [ -n "${DOCKER_DEFAULT_PLATFORM:-}" ] && [ "${DOCKER_DEFAULT_PLATFORM}" != "${EFFECTIVE_DOCKER_DEFAULT_PLATFORM:-}" ]; then
+    log_warn "检测到 DOCKER_DEFAULT_PLATFORM=${DOCKER_DEFAULT_PLATFORM}，本地开发脚本将覆盖为 ${EFFECTIVE_DOCKER_DEFAULT_PLATFORM}"
+  elif [ -n "${DOCKER_DEFAULT_PLATFORM:-}" ]; then
+    log_info "DOCKER_DEFAULT_PLATFORM=${DOCKER_DEFAULT_PLATFORM}"
+  fi
+}
+
+ensure_prebuilt_runner_image() {
+  local image="$1"
+  local current_platform
+
+  if ! remote_image_supports_platform "$image" "$DOCKER_PLATFORM"; then
+    log_error "预构建 Runner 镜像 ${image} 不支持 ${DOCKER_PLATFORM}。请改用 RUNNER_DEV_MODE=local 或更换镜像。"
+    return 1
+  fi
+
+  current_platform="$(inspect_local_image_platform "$image")"
+  if [ -n "$current_platform" ] && [ "$current_platform" = "$DOCKER_PLATFORM" ]; then
+    log_info "预构建 Runner 镜像已就绪: ${image} (${current_platform})"
+    return 0
+  fi
+
+  if [ -n "$current_platform" ]; then
+    log_info "Refreshing prebuilt Runner image ${image} from ${current_platform} to ${DOCKER_PLATFORM}"
+    docker image rm "$image" >/dev/null 2>&1 || true
+  else
+    log_info "Pulling prebuilt Runner image ${image} for ${DOCKER_PLATFORM}"
+  fi
+
+  if docker pull --platform "$DOCKER_PLATFORM" "$image" >/dev/null 2>&1; then
+    current_platform="$(inspect_local_image_platform "$image")"
+    if [ "$current_platform" = "$DOCKER_PLATFORM" ]; then
+      return 0
+    fi
+  fi
+
+  log_error "无法为当前平台准备预构建 Runner 镜像 ${image}"
+  return 1
+}
+
+prepare_external_image() {
+  local service="$1"
+  local image="$2"
+  local desired_platform="$3"
+  local fallback_platform="linux/amd64"
+  local current_platform
+  local pulled_platform
+
+  current_platform="$(inspect_local_image_platform "$image")"
+  if [ -n "$current_platform" ] && [ "$current_platform" = "$desired_platform" ]; then
+    return 0
+  fi
+
+  if [ -n "$current_platform" ]; then
+    log_info "Repairing cached image ${image} from ${current_platform} to ${desired_platform}"
+    docker image rm "$image" >/dev/null 2>&1 || true
+  else
+    log_info "Pulling ${image} for ${desired_platform}"
+  fi
+
+  if docker pull --platform "$desired_platform" "$image" >/dev/null 2>&1; then
+    pulled_platform="$(inspect_local_image_platform "$image")"
+    if [ "$pulled_platform" = "$desired_platform" ]; then
+      return 0
+    fi
+
+    log_error "镜像 ${image} 拉取后平台异常：期望 ${desired_platform}，实际 ${pulled_platform:-unknown}"
+    return 1
+  fi
+
+  if [ "$desired_platform" != "$fallback_platform" ] \
+    && ! remote_image_supports_platform "$image" "$desired_platform" \
+    && remote_image_supports_platform "$image" "$fallback_platform"; then
+    log_warn "Falling back ${image} to ${fallback_platform} (native ${desired_platform} unavailable)"
+    docker image rm "$image" >/dev/null 2>&1 || true
+
+    if docker pull --platform "$fallback_platform" "$image" >/dev/null 2>&1; then
+      pulled_platform="$(inspect_local_image_platform "$image")"
+      if [ "$pulled_platform" != "$fallback_platform" ]; then
+        log_error "镜像 ${image} 回退后平台异常：期望 ${fallback_platform}，实际 ${pulled_platform:-unknown}"
+        return 1
+      fi
+
+      record_service_fallback "$service" "$fallback_platform" "$image"
+      return 0
+    fi
+  fi
+
+  log_error "无法为 ${service} 准备镜像 ${image}（目标平台 ${desired_platform}）。请检查网络、镜像仓库权限或镜像平台支持情况。"
+  return 1
+}
+
+run_platform_preflight() {
+  local active_profiles_csv="$1"
+  local external_services=(db redis minio registry registry-ui)
+  local service
+  local image
+
+  FALLBACK_SERVICES=()
+  FALLBACK_PLATFORMS=()
+  FALLBACK_IMAGES=()
+  cleanup_runtime_artifacts
+  normalize_runner_dev_mode
+
+  log_info "环境探测..."
+  detect_host_platform
+  detect_rosetta_status
+  if ! detect_docker_platform; then
+    log_error "无法探测 Docker 平台，请确认 Docker Desktop 运行正常。"
+    exit 1
+  fi
+  log_platform_context
+
+  if [ "${HOST_OS:-}" = "darwin" ]; then
+    log_info "development mode: ${HOST_OS}/${HOST_ARCH} host + Docker Desktop runtime"
+  else
+    log_info "development mode: ${HOST_OS}/${HOST_ARCH} host + Docker runtime ${DOCKER_PLATFORM}"
+  fi
+  log_info "镜像纠偏..."
+
+  for service in "${external_services[@]}"; do
+    if ! service_enabled "$service" "$active_profiles_csv"; then
+      continue
+    fi
+
+    image="$(service_image "$service")"
+    if ! prepare_external_image "$service" "$image" "$DOCKER_PLATFORM"; then
+      exit 1
+    fi
+  done
+
+  if [ "${RUNNER_DEV_MODE}" = "prebuilt" ]; then
+    if ! ensure_prebuilt_runner_image "${RUNNER_PREBUILT_IMAGE}"; then
+      exit 1
+    fi
+  else
+    log_info "Runner mode: local source build"
+  fi
+
+  if [ ${#FALLBACK_SERVICES[@]} -gt 0 ] || [ "${RUNNER_DEV_MODE}" = "local" ]; then
+    write_platform_override_file
+  fi
+
+  log_success "平台预检完成"
+}
+
 start_services() {
   ensure_runtime
   ensure_api_env
 
   local profiles=()
+  local active_profiles_csv
+  active_profiles_csv="$(collect_active_profiles_csv "$@")"
+
   while [ $# -gt 0 ]; do
     case "$1" in
       --tools)
@@ -257,12 +752,19 @@ start_services() {
     shift
   done
 
-  log_info "启动开发基础设施（docker-compose.dev.yml）..."
+  run_platform_preflight "$active_profiles_csv"
+
   local runner_api_key
   runner_api_key="$(get_api_env_value "DEFAULT_RUNNER_API_KEY" "local_runner_key")"
-  log_info "构建本地 Runner 开发镜像..."
-  DEFAULT_RUNNER_API_KEY="$runner_api_key" compose_cmd build runner
 
+  if [ "${RUNNER_DEV_MODE}" = "local" ]; then
+    log_info "构建本地 Runner 开发镜像..."
+    DEFAULT_RUNNER_API_KEY="$runner_api_key" compose_cmd build runner
+  else
+    log_info "使用预构建 Runner 镜像: ${RUNNER_PREBUILT_IMAGE}"
+  fi
+
+  log_info "启动开发基础设施（docker-compose.dev.yml）..."
   if [ ${#profiles[@]} -gt 0 ]; then
     DEFAULT_RUNNER_API_KEY="$runner_api_key" compose_cmd up -d "${profiles[@]}"
   else
@@ -287,7 +789,7 @@ start_services() {
   log_info "下一步:"
   echo "  - 启动 API: yarn dev:api"
   echo "  - 启动 Dashboard: yarn dev:dashboard"
-  echo "  - 一键启动本机应用: yarn dev:full"
+  echo "  - 一键启动本机应用: yarn dev"
 }
 
 stop_services() {
@@ -325,8 +827,15 @@ show_logs() {
 
 run_doctor() {
   local has_issue=false
+  local active_profiles_csv=""
+  local external_services=(db redis minio registry registry-ui)
+  local service
+  local image
+  local cached_platform
+  local note
 
   echo "[doctor] 检查基础环境"
+  normalize_runner_dev_mode
 
   if command -v docker >/dev/null 2>&1; then
     echo "  - docker: $(docker --version)"
@@ -336,8 +845,10 @@ run_doctor() {
   fi
 
   if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    detect_compose_cmd
     echo "  - compose: $(docker compose version | head -n 1)"
   elif command -v docker-compose >/dev/null 2>&1; then
+    detect_compose_cmd
     echo "  - compose: $(docker-compose --version)"
   else
     echo "  - compose: missing"
@@ -361,7 +872,7 @@ run_doctor() {
   if [ -x "$NX_BIN" ]; then
     echo "  - node_modules: present"
   else
-    echo "  - node_modules: missing (可由 yarn dev:full 自动安装)"
+    echo "  - node_modules: missing (可由 yarn dev 自动安装)"
   fi
 
   if [ -f "$API_ENV_FILE" ]; then
@@ -376,8 +887,88 @@ run_doctor() {
     echo "  - proxy dns script: missing"
   fi
 
+  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+    detect_host_platform
+    detect_rosetta_status
+    normalize_runner_dev_mode
+    if detect_docker_platform; then
+      echo "  - host platform: ${HOST_OS}/${HOST_ARCH}"
+      echo "  - docker runtime platform: ${DOCKER_PLATFORM}"
+      echo "  - docker context: ${DOCKER_CONTEXT}"
+      if [ "${HOST_OS:-}" = "darwin" ] && [ "${HOST_ARCH:-}" = "arm64" ] && [ "${DOCKER_PLATFORM:-}" = "linux/arm64" ]; then
+        echo "  - development mode: macOS ARM host + Docker Desktop runtime"
+      else
+        echo "  - development mode: ${HOST_OS}/${HOST_ARCH} host + Docker runtime"
+      fi
+      if [ "${HOST_OS:-}" = "darwin" ]; then
+        case "${ROSETTA_TRANSLATED:-}" in
+          1)
+            echo "  - rosetta shell: yes"
+            ;;
+          0)
+            echo "  - rosetta shell: no"
+            ;;
+        esac
+      fi
+    else
+      echo "  - docker platform: unavailable"
+      has_issue=true
+    fi
+  elif command -v docker >/dev/null 2>&1; then
+    echo "  - docker daemon: unavailable"
+    has_issue=true
+  fi
+
+  if [ -n "${DOCKER_DEFAULT_PLATFORM:-}" ]; then
+    echo "  - DOCKER_DEFAULT_PLATFORM: ${DOCKER_DEFAULT_PLATFORM}"
+  else
+    echo "  - DOCKER_DEFAULT_PLATFORM: unset"
+  fi
+
+  if [ -n "$DOCKER_COMPOSE_BIN" ]; then
+    echo "  - compose engine: $(compose_engine_label)"
+  fi
+  echo "  - runner mode: ${RUNNER_DEV_MODE}"
+  if [ "${RUNNER_DEV_MODE}" = "prebuilt" ]; then
+    echo "  - runner image: ${RUNNER_PREBUILT_IMAGE}"
+    if [ -n "${DOCKER_PLATFORM:-}" ]; then
+      if remote_image_supports_platform "${RUNNER_PREBUILT_IMAGE}" "${DOCKER_PLATFORM}"; then
+        echo "  - runner image support: ${DOCKER_PLATFORM}"
+      else
+        echo "  - runner image support: missing ${DOCKER_PLATFORM}"
+        has_issue=true
+      fi
+    fi
+  else
+    echo "  - runner image: daytona-lite-runner-dev (local build)"
+  fi
+
+  active_profiles_csv="$(collect_active_profiles_csv)"
+  echo "  - image cache:"
+  for service in "${external_services[@]}"; do
+    image="$(service_image "$service")"
+    note=""
+
+    if ! service_enabled "$service" "$active_profiles_csv"; then
+      note=" (inactive profile: $(service_profile "$service"))"
+    fi
+
+    cached_platform="$(inspect_local_image_platform "$image")"
+    if [ -z "$cached_platform" ]; then
+      echo "    - ${image}: not cached${note}"
+      continue
+    fi
+
+    if [ -n "${DOCKER_PLATFORM:-}" ] && [ "$cached_platform" != "$DOCKER_PLATFORM" ] && service_enabled "$service" "$active_profiles_csv"; then
+      echo "    - ${image}: mismatch ${cached_platform} -> expected ${DOCKER_PLATFORM}${note}"
+      has_issue=true
+    else
+      echo "    - ${image}: ${cached_platform}${note}"
+    fi
+  done
+
   if [ "$has_issue" = true ]; then
-    log_warn "检测到缺失项，建议先修复后再运行开发命令。"
+    log_warn "检测到缺失项或平台问题，建议先修复后再运行开发命令。"
     return 1
   fi
 
@@ -424,13 +1015,11 @@ run_api() {
   ensure_js_dependencies
   ensure_api_env
 
-  # Export vars from apps/api/.env so Nx serve uses local dev settings.
   set -a
   # shellcheck disable=SC1090
   source "$API_ENV_FILE"
   set +a
 
-  # Normalize container-oriented defaults for host-run local development.
   if [ "${DB_HOST:-}" = "db" ] || [ -z "${DB_HOST:-}" ]; then
     export DB_HOST="localhost"
   fi
@@ -501,6 +1090,7 @@ run_full() {
     if [ -n "${dashboard_pid:-}" ]; then
       kill "$dashboard_pid" >/dev/null 2>&1 || true
     fi
+    cleanup_runtime_artifacts
   }
 
   trap cleanup INT TERM EXIT
@@ -553,11 +1143,12 @@ Daytona Lite 本地开发脚本
   help                                    显示帮助
 
 常用:
+  yarn dev
   yarn dev:start
+  yarn dev:runner-local
   yarn dev:reset
   yarn dev:api
   yarn dev:dashboard
-  yarn dev:full
 USAGE
 }
 

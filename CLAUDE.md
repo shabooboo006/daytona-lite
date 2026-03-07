@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 全局同步规则
+
+- `AGENTS.md` 与 `CLAUDE.md` 应互为同步文件；任一方发生变更时，另一方对应内容也必须同步更新，以同时支持 Codex 与 Claude Code 读取，更好支持 Vibe Coding 协作
+
 ## 项目概述
 
 **Daytona Lite** 是 [Daytona](https://github.com/daytonaio/daytona) 的精简私有化部署版本，移除了 SaaS 相关组件（计费、审计日志、Webhook、邮件、实时通知、CLI、文档站点等），保留核心的 Sandbox 管理能力，并将认证方式从 OIDC/Dex 改为 Admin Password + API Key 双模式。
@@ -17,15 +21,22 @@ yarn install
 ### 本地开发
 
 ```bash
-# 启动基础设施（数据库、缓存、存储）
-docker-compose -f docker/docker-compose.yaml up -d db redis minio registry
-
-# 启动 API 开发服务器（apps/api 目录下）
-cd apps/api && yarn start:dev
-
-# 启动 Dashboard 开发服务器（apps/dashboard 目录下）
-cd apps/dashboard && yarn dev
+yarn dev              # 推荐：一键启动基础设施 + API + Dashboard
+yarn dev:doctor       # 检查本地开发环境、系统平台与镜像架构
+yarn dev:start        # 仅启动开发基础设施
+yarn dev:runner-local # 显式启用本地源码构建 Runner
+yarn dev:api          # 本机启动 API（热重载）
+yarn dev:dashboard    # 本机启动 Dashboard
+yarn dev:stop         # 停止开发基础设施
 ```
+
+说明：
+
+- 开发基础设施默认来自 `docker/docker-compose.dev.yml`
+- `yarn dev` 默认使用预构建 multi-arch Runner 镜像，`yarn dev:runner-local` 才会显式构建本地 Runner
+- `scripts/dev.sh` 会在启动前自动探测 Host / Docker 平台，并明确区分 macOS 宿主机与 Docker Desktop Linux runtime
+- `scripts/dev.sh` 会在启动前自动修复本地缓存的错误架构基础设施镜像
+- `yarn dev:full` 作为兼容旧入口保留，语义等价于 `yarn dev`
 
 ### 构建
 
@@ -185,6 +196,7 @@ docker/         - Docker Compose 配置
 ### Dashboard（apps/dashboard）
 
 基于 **React + Vite**，使用：
+
 - **react-router-dom 6** 管理路由（路由定义见 `apps/dashboard/src/App.tsx`）
 - **@tanstack/react-query** 管理服务端状态
 - **shadcn/ui + Radix UI + Tailwind CSS** 组件库
@@ -193,9 +205,17 @@ docker/         - Docker Compose 配置
 
 认证流程：Dashboard 通过 `POST /api/admin/login` 获取 JWT token，存储后通过 `CombinedAuthGuard` 鉴权（与 API Key 兼容）。`ConfigProvider` 在启动时读取 `/api/config` 获取运行时配置。
 
+Dashboard 界面约束：
+
+- Dashboard 前端必须支持 `zh-CN` 与 `en` 两种界面语言，默认显示中文。
+- 任何新增或修改的用户可见前端文案，必须同步提供中英文，不允许只实现英文展示。
+- 国际化覆盖范围包括页面标题、侧边栏、组织切换、表单、列表、表格、筛选器、分页、弹窗、toast、命令面板和空状态。
+- 语言切换后应即时生效，并在刷新后保持用户上次选择。
+
 ### 认证机制（Lite 版本特有）
 
 原版 Daytona 使用 OIDC/Dex，Lite 版本改为：
+
 - **Admin Password 认证**：`POST /api/admin/login`，验证 `ADMIN_PASSWORD` 环境变量，颁发 HS256 JWT（64h 有效期，secret 使用 `JWT_SECRET` 或 `ENCRYPTION_KEY`）
 - **API Key 认证**：`Authorization: Bearer <key>`，通过 `ApiKeyStrategy` 验证，结果缓存在 Redis
 - `CombinedAuthGuard` 同时支持两种方式（`['admin-jwt', 'api-key']`）

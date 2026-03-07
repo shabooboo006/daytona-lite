@@ -74,6 +74,7 @@ echo "  - MinIO Console: http://localhost:9001"
 
 echo
 log_info "管理命令:"
+echo "  - 推荐完整启动: yarn dev"
 echo "  - 服务状态: yarn dev:status"
 echo "  - 容器日志: yarn dev:logs"
 echo "  - 停止基础设施: yarn dev:stop"

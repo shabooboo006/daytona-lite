@@ -77,10 +77,7 @@ services:
     restart: unless-stopped
 
   runner:
-    image: daytona-lite-runner-dev
-    build:
-      context: ..
-      dockerfile: apps/runner/Dockerfile
+    image: ${DAYTONA_DEV_RUNNER_IMAGE:-daytonaio/daytona-runner:latest}
     environment:
       - ENVIRONMENT=development
       - API_PORT=3003

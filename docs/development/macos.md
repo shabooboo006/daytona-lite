@@ -106,17 +106,16 @@ yarn install
 基础设施容器化运行，API 和 Dashboard 本机运行，适合高频迭代。
 
 ```bash
-# 1. 启动开发基础设施（db/redis/minio/registry/runner）
+# 推荐：一键启动基础设施 + API + Dashboard
+yarn dev
+
+# 或者拆分启动
 yarn dev:start
-
-# 2. 首次开发时准备 API 配置
-cp apps/api/.env.example apps/api/.env
-
-# 3. 在新终端启动 API（热重载）
 yarn dev:api
-
-# 4. 在新终端启动 Dashboard（Vite）
 yarn dev:dashboard
+
+# 仅在开发 Runner 本身时使用本地源码构建模式
+yarn dev:runner-local
 ```
 
 访问地址：
@@ -129,6 +128,7 @@ yarn dev:dashboard
 
 ```bash
 # 一键启动基础设施 + API + Dashboard
+yarn dev
 yarn dev:full
 
 # 删除开发 volumes 并从头重建基础设施
@@ -140,10 +140,14 @@ yarn dev:status
 yarn dev:logs
 ```
 
-`yarn dev:full` 会自动处理以下事项：
+`yarn dev` / `yarn dev:full` 会自动处理以下事项：
 
 - 若 `node_modules` 缺失，会自动执行 `yarn install`。
 - 若 `apps/api/.env` 缺失，会从 `.env.example` 自动生成。
+- 会先探测 Host / Docker 平台，并明确显示这是 “macOS ARM host + Docker Desktop runtime”。
+- 默认直接使用预构建 multi-arch Runner 镜像；只有 `yarn dev:runner-local` 才会本地构建 Runner。
+- 会在启动前自动修复本地缓存的错误架构基础设施镜像。
+- 若某个基础镜像没有原生 `linux/arm64` 变体，会只对对应服务回退到 `linux/amd64` emulation，并输出明确警告。
 - 会先等待 API 就绪，再启动 Dashboard，避免初次启动阶段的代理报错。
 - 会提前检查 `3000/3001` 端口占用情况，避免启动到一半才失败。
 
@@ -165,7 +169,7 @@ docker compose -f docker/docker-compose.yaml ps
 ```mermaid
 flowchart TD
   q{需要运行 Runner？}
-  q -- 是 --> docker[以 Docker 容器运行\nLinux/amd64 镜像]
+  q -- 是 --> docker[以 Docker 容器运行\n原生平台优先]
   q -- 否 --> native[API + Dashboard\n原生运行]
   docker --> why[原因：Runner 需要\nDocker-in-Docker\n特权模式 + Linux 内核]
   why --> dind[Docker Desktop 提供\nLinux 虚拟机环境\n满足此要求]
@@ -175,7 +179,8 @@ Runner 需要：
 
 - **特权模式**（`--privileged`）：用于 Docker-in-Docker 启动 Sandbox 容器
 - **Linux 内核**：依赖 Linux 命名空间和 cgroup
-- **amd64 架构**（默认镜像）：多数 Sandbox 基础镜像为 amd64
+- **Linux 容器环境**：Docker Desktop 在 macOS 上提供 Linux runtime，因此日志看到 `docker runtime platform: linux/arm64` 是正常现象
+- **Runner 镜像选择**：`yarn dev` 默认直接使用预构建 multi-arch Runner 镜像；只有 `yarn dev:runner-local` 才会切换到本地源码构建
 
 macOS 本机无法满足上述条件，因此 Runner 必须以 Docker 容器运行。
 
@@ -283,6 +288,25 @@ docker compose -f docker/docker-compose.dev.yml logs db
 ```bash
 docker compose -f docker/docker-compose.dev.yml logs runner
 ```
+
+**Q: `yarn dev:start` 提示镜像平台不匹配或自动修复了镜像？**
+
+这是开发脚本的预期行为。脚本会以 Docker Server 平台为准检查本地缓存镜像，并在启动前自动纠正到正确架构：
+
+```bash
+yarn dev:doctor
+docker image inspect postgres:18 --format '{{.Os}}/{{.Architecture}}'
+```
+
+如果某个基础镜像确实没有 `linux/arm64` 变体，脚本会只对对应服务回退到 `linux/amd64` emulation，并输出一次明确 warning。
+
+**Q: 日志里显示 `docker runtime platform: linux/arm64`，是不是误判成 Linux 方案了？**
+
+不是。这表示你在 **macOS ARM 宿主机** 上，通过 Docker Desktop 的 **Linux runtime** 启动开发容器。这正是 Apple Silicon 上的正常开发模式。
+
+**Q: 什么时候用 `yarn dev:runner-local`？**
+
+只有在你要修改或调试 Runner 源码本身时才需要。平时开发 API / Dashboard，直接使用 `yarn dev` 即可，启动会明显更快。
 
 **Q: Dashboard 访问 API 报 CORS 错误？**
 
