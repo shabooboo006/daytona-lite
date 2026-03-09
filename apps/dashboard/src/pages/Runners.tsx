@@ -32,7 +32,7 @@ import { handleApiError } from '@/lib/error-handling'
 import { useRegions } from '@/hooks/useRegions'
 
 const Runners: React.FC = () => {
-  const { runnersApi } = useApi()
+  const { adminApi, runnersApi } = useApi()
   const { notificationSocket } = useNotificationSocket()
   const { customRegions: regions, loadingAvailableRegions: loadingRegions, getRegionName } = useRegions()
 
@@ -62,7 +62,7 @@ const Runners: React.FC = () => {
         setLoadingRunnersData(true)
       }
       try {
-        const response = (await runnersApi.listRunners(selectedOrganization.id)).data
+        const response = (await adminApi.adminListRunners()).data
         setRunners(response || [])
       } catch (error) {
         handleApiError(error, 'Failed to fetch runners')
@@ -71,7 +71,7 @@ const Runners: React.FC = () => {
         setLoadingRunnersData(false)
       }
     },
-    [runnersApi, selectedOrganization],
+    [adminApi, selectedOrganization],
   )
 
   useEffect(() => {
@@ -165,7 +165,7 @@ const Runners: React.FC = () => {
 
     setRunnerIsLoading((prev) => ({ ...prev, [runnerToToggleScheduling.id]: true }))
     try {
-      await runnersApi.updateRunnerScheduling(runnerToToggleScheduling.id, selectedOrganization?.id, {
+      await adminApi.adminUpdateRunnerScheduling(runnerToToggleScheduling.id, {
         data: { unschedulable: !runnerToToggleScheduling.unschedulable },
       })
       toast.success(
@@ -190,7 +190,7 @@ const Runners: React.FC = () => {
 
     setRunnerIsLoading((prev) => ({ ...prev, [runnerToDelete.id]: true }))
     try {
-      await runnersApi.deleteRunner(runnerToDelete.id, selectedOrganization?.id)
+      await adminApi.adminDeleteRunner(runnerToDelete.id)
       toast.success('Runner deleted successfully')
       await fetchRunners(false)
     } catch (error) {

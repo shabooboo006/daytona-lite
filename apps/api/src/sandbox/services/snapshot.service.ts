@@ -481,6 +481,101 @@ export class SnapshotService {
     return snapshot
   }
 
+  async upsertLocalSnapshot(
+    organization: Organization,
+    params: {
+      name: string
+      imageName: string
+      ref: string
+      initialRunnerId: string
+      regionId: string
+      size?: number
+      entrypoint?: string[]
+      general?: boolean
+    },
+  ): Promise<Snapshot> {
+    let snapshot: Snapshot | null = null
+
+    try {
+      snapshot = await this.getSnapshotByName(params.name, organization.id)
+    } catch {
+      snapshot = null
+    }
+
+    if (!snapshot) {
+      snapshot = this.snapshotRepository.create({
+        organizationId: organization.id,
+        general: params.general ?? false,
+        name: params.name,
+        imageName: params.imageName,
+      })
+    }
+
+    snapshot.organizationId = organization.id
+    snapshot.general = params.general ?? snapshot.general
+    snapshot.name = params.name
+    snapshot.imageName = params.imageName
+    snapshot.ref = params.ref
+    snapshot.state = SnapshotState.ACTIVE
+    snapshot.errorReason = null
+    snapshot.size = params.size
+    snapshot.entrypoint = params.entrypoint
+    snapshot.initialRunnerId = params.initialRunnerId
+    snapshot.lastUsedAt = new Date()
+
+    const savedSnapshot = await this.snapshotRepository.save(snapshot)
+
+    const hasRegion = await this.snapshotRegionRepository.exists({
+      where: {
+        snapshotId: savedSnapshot.id,
+        regionId: params.regionId,
+      },
+    })
+
+    if (!hasRegion) {
+      await this.snapshotRegionRepository.save(
+        this.snapshotRegionRepository.create({
+          snapshotId: savedSnapshot.id,
+          regionId: params.regionId,
+        }),
+      )
+    }
+
+    return savedSnapshot
+  }
+
+  async resetSnapshotForPull(snapshotId: string, imageName: string, regionId: string): Promise<Snapshot> {
+    const snapshot = await this.getSnapshot(snapshotId)
+
+    snapshot.imageName = imageName
+    snapshot.ref = undefined
+    snapshot.state = SnapshotState.PENDING
+    snapshot.errorReason = null
+    snapshot.size = undefined
+    snapshot.entrypoint = undefined
+    snapshot.initialRunnerId = undefined
+
+    const savedSnapshot = await this.snapshotRepository.save(snapshot)
+
+    const hasRegion = await this.snapshotRegionRepository.exists({
+      where: {
+        snapshotId: savedSnapshot.id,
+        regionId,
+      },
+    })
+
+    if (!hasRegion) {
+      await this.snapshotRegionRepository.save(
+        this.snapshotRegionRepository.create({
+          snapshotId: savedSnapshot.id,
+          regionId,
+        }),
+      )
+    }
+
+    return savedSnapshot
+  }
+
   async setSnapshotGeneralStatus(snapshotId: string, general: boolean) {
     const snapshot = await this.snapshotRepository.findOne({
       where: { id: snapshotId },

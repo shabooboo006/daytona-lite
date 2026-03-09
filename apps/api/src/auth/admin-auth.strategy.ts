@@ -11,6 +11,8 @@ import { AuthContext } from '../common/interfaces/auth-context.interface'
 import { Request } from 'express'
 import { CustomHeaders } from '../common/constants/header.constants'
 import { TypedConfigService } from '../config/typed-config.service'
+import { SystemRole } from '../user/enums/system-role.enum'
+import { DAYTONA_ADMIN_USER_ID } from './admin.constants'
 
 @Injectable()
 export class AdminAuthStrategy extends PassportStrategy(Strategy, 'admin-jwt') {
@@ -32,7 +34,7 @@ export class AdminAuthStrategy extends PassportStrategy(Strategy, 'admin-jwt') {
   async validate(request: Request, payload: any): Promise<AuthContext> {
     this.logger.debug('AdminAuthStrategy.validate called')
 
-    const userId = payload.sub
+    const userId = payload.sub === 'admin' ? DAYTONA_ADMIN_USER_ID : payload.sub
     let user = await this.userService.findOne(userId)
 
     if (!user) {
@@ -42,6 +44,8 @@ export class AdminAuthStrategy extends PassportStrategy(Strategy, 'admin-jwt') {
         email: '',
         emailVerified: true,
         personalOrganizationQuota: this.configService.getOrThrow('defaultOrganizationQuota'),
+        personalOrganizationDefaultRegionId: this.configService.getOrThrow('defaultRegion.id'),
+        role: SystemRole.ADMIN,
       })
       this.logger.debug(`Created admin user with ID: ${userId}`)
     }

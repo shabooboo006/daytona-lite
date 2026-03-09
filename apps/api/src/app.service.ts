@@ -16,11 +16,17 @@ import { TypedConfigService } from './config/typed-config.service'
 import { SchedulerRegistry } from '@nestjs/schedule'
 import { RegionService } from './region/services/region.service'
 import { RunnerService } from './sandbox/services/runner.service'
-import { RunnerAdapterFactory } from './sandbox/runner-adapter/runnerAdapter'
+import { RunnerAdapterFactory, RunnerSnapshotInfo } from './sandbox/runner-adapter/runnerAdapter'
 import { RegionType } from './region/enums/region-type.enum'
 import { RunnerState } from './sandbox/enums/runner-state.enum'
-
-export const DAYTONA_ADMIN_USER_ID = 'daytona-admin'
+import { DAYTONA_ADMIN_USER_ID } from './auth/admin.constants'
+import { Runner } from './sandbox/entities/runner.entity'
+import { Configuration as RunnerApiConfiguration, SnapshotsApi } from '@daytonaio/runner-api-client'
+import axios from 'axios'
+import { Snapshot } from './sandbox/entities/snapshot.entity'
+import { SnapshotState } from './sandbox/enums/snapshot-state.enum'
+import { AxiosError } from 'axios'
+import { SnapshotRunnerState } from './sandbox/enums/snapshot-runner-state.enum'
 
 @Injectable()
 export class AppService implements OnApplicationBootstrap, OnApplicationShutdown {
@@ -105,18 +111,18 @@ export class AppService implements OnApplicationBootstrap, OnApplicationShutdown
     }
 
     const defaultRegionId = this.configService.getOrThrow('defaultRegion.id')
+    const runnerName = this.configService.getOrThrow('defaultRunner.name')
+    const runnerVersion = this.configService.getOrThrow('defaultRunner.apiVersion')
 
     const existingRunners = await this.runnerService.findAllByRegion(defaultRegionId)
-    if (
-      existingRunners.length > 0 &&
-      existingRunners.some((r) => r.name === this.configService.get('defaultRunner.name'))
-    ) {
+    const existingRunner = existingRunners.find((runner) => runner.name === runnerName)
+    if (existingRunner) {
+      this.logger.log(`Default runner ${runnerName} already exists, waiting for health...`)
+      await this.waitForRunnerHealthy(existingRunner.id, runnerVersion, runnerName)
       return
     }
 
-    this.logger.log(`Creating default runner: ${this.configService.getOrThrow('defaultRunner.name')}`)
-
-    const runnerVersion = this.configService.getOrThrow('defaultRunner.apiVersion')
+    this.logger.log(`Creating default runner: ${runnerName}`)
 
     if (runnerVersion === '0') {
       const { runner } = await this.runnerService.create({
@@ -126,47 +132,25 @@ export class AppService implements OnApplicationBootstrap, OnApplicationShutdown
         cpu: this.configService.getOrThrow('defaultRunner.cpu'),
         memoryGiB: this.configService.getOrThrow('defaultRunner.memory'),
         diskGiB: this.configService.getOrThrow('defaultRunner.disk'),
-        regionId: this.configService.getOrThrow('defaultRegion.id'),
+        regionId: defaultRegionId,
         domain: this.configService.getOrThrow('defaultRunner.domain'),
         apiVersion: runnerVersion,
-        name: this.configService.getOrThrow('defaultRunner.name'),
+        name: runnerName,
       })
 
-      const runnerAdapter = await this.runnerAdapterFactory.create(runner)
-
-      this.logger.log(`Waiting for runner ${runner.name} to be healthy...`)
-      for (let i = 0; i < 30; i++) {
-        try {
-          await runnerAdapter.healthCheck()
-          this.logger.log(`Runner ${runner.name} is healthy`)
-          return
-        } catch {
-          // ignore
-        }
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-      }
+      await this.waitForRunnerHealthy(runner.id, runnerVersion, runner.name)
     } else if (runnerVersion === '2') {
       const { runner } = await this.runnerService.create({
         apiKey: this.configService.getOrThrow('defaultRunner.apiKey'),
-        regionId: this.configService.getOrThrow('defaultRegion.id'),
+        regionId: defaultRegionId,
         apiVersion: runnerVersion,
-        name: this.configService.getOrThrow('defaultRunner.name'),
+        name: runnerName,
       })
 
-      this.logger.log(`Waiting for runner ${runner.name} to be healthy...`)
-      for (let i = 0; i < 30; i++) {
-        const { state } = await this.runnerService.findOneFullOrFail(runner.id)
-        if (state === RunnerState.READY) {
-          this.logger.log(`Runner ${runner.name} is healthy`)
-          return
-        }
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-      }
+      await this.waitForRunnerHealthy(runner.id, runnerVersion, runner.name)
     }
 
-    this.logger.log(
-      `Default runner ${this.configService.getOrThrow('defaultRunner.name')} created successfully but didn't pass health check`,
-    )
+    this.logger.log(`Default runner ${runnerName} created successfully`)
   }
 
   private async initializeAdminUser(): Promise<void> {
@@ -330,45 +314,181 @@ Admin user created with API key: ${value}
 
   private async initializeDefaultSnapshot(): Promise<void> {
     const adminPersonalOrg = await this.organizationService.findPersonal(DAYTONA_ADMIN_USER_ID)
-    const defaultSnapshot = this.configService.getOrThrow('defaultSnapshot')
+    const defaultSnapshotName = this.configService.getOrThrow('defaultSnapshot')
     const defaultRegionId = adminPersonalOrg.defaultRegionId ?? this.configService.getOrThrow('defaultRegion.id')
+    const defaultRunner = await this.waitForDefaultRunnerReady()
+
+    let existingSnapshot: Snapshot | null = null
 
     try {
-      const existingSnapshot = await this.snapshotService.getSnapshotByName(defaultSnapshot, adminPersonalOrg.id)
-      if (existingSnapshot) {
-        return
-      }
+      existingSnapshot = await this.snapshotService.getSnapshotByName(defaultSnapshotName, adminPersonalOrg.id)
     } catch {
-      this.logger.log('Default snapshot not found, creating...')
+      existingSnapshot = null
     }
 
     if (this.configService.get('localImageMode') && !this.configService.get('registryFallbackEnabled')) {
-      const localImages = await this.snapshotService.listLocalImages(adminPersonalOrg, defaultRegionId, defaultSnapshot, true)
+      const localImages = await this.snapshotService.listLocalImages(
+        adminPersonalOrg,
+        defaultRegionId,
+        defaultSnapshotName,
+        true,
+      )
       const hasLocalImage = localImages.some(
         (image) =>
-          image.imageName === defaultSnapshot ||
-          image.repoTags?.includes(defaultSnapshot) ||
-          image.repoDigests?.includes(defaultSnapshot),
+          image.imageName === defaultSnapshotName ||
+          image.repoTags?.includes(defaultSnapshotName) ||
+          image.repoDigests?.includes(defaultSnapshotName),
       )
 
       if (!hasLocalImage) {
         this.logger.warn(
-          `Skipping default snapshot initialization for ${defaultSnapshot}: local image mode is enabled, registry fallback is disabled, and no ready runner in region ${defaultRegionId} currently has the image`,
+          `Skipping default snapshot initialization for ${defaultSnapshotName}: local image mode is enabled, registry fallback is disabled, and no ready runner in region ${defaultRegionId} currently has the image`,
         )
         return
       }
     }
 
+    if (defaultRunner) {
+      const localSnapshotInfo = await this.getLocalRunnerSnapshotInfo(defaultRunner, defaultSnapshotName)
+      if (localSnapshotInfo) {
+        await this.snapshotService.upsertLocalSnapshot(adminPersonalOrg, {
+          name: defaultSnapshotName,
+          imageName: defaultSnapshotName,
+          ref: defaultSnapshotName,
+          initialRunnerId: defaultRunner.id,
+          regionId: defaultRegionId,
+          size: localSnapshotInfo.sizeGB,
+          entrypoint: localSnapshotInfo.entrypoint,
+          general: true,
+        })
+        await this.runnerService.ensureSnapshotRunnerEntry(
+          defaultRunner.id,
+          defaultSnapshotName,
+          SnapshotRunnerState.READY,
+        )
+        this.logger.log(`Default snapshot ${defaultSnapshotName} is active from local runner image`)
+        return
+      }
+    }
+
+    if (existingSnapshot?.state === SnapshotState.ACTIVE) {
+      return
+    }
+
+    if (existingSnapshot) {
+      await this.snapshotService.resetSnapshotForPull(existingSnapshot.id, defaultSnapshotName, defaultRegionId)
+      this.logger.log(`Default snapshot ${defaultSnapshotName} reset for pull reconciliation`)
+      return
+    }
+
     await this.snapshotService.createFromPull(
       adminPersonalOrg,
       {
-        name: defaultSnapshot,
-        imageName: defaultSnapshot,
+        name: defaultSnapshotName,
+        imageName: defaultSnapshotName,
         regionId: defaultRegionId,
       },
       true,
     )
 
     this.logger.log('Default snapshot created successfully')
+  }
+
+  private async waitForRunnerHealthy(runnerId: string, runnerVersion: '0' | '2', runnerName: string): Promise<boolean> {
+    this.logger.log(`Waiting for runner ${runnerName} to be healthy...`)
+
+    if (runnerVersion === '0') {
+      for (let i = 0; i < 60; i++) {
+        try {
+          const runner = await this.runnerService.findOneOrFail(runnerId)
+          const runnerAdapter = await this.runnerAdapterFactory.create(runner)
+          await runnerAdapter.healthCheck()
+          this.logger.log(`Runner ${runnerName} is healthy`)
+          return true
+        } catch {
+          // ignore until timeout
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      }
+    } else {
+      for (let i = 0; i < 60; i++) {
+        const { state } = await this.runnerService.findOneFullOrFail(runnerId)
+        if (state === RunnerState.READY) {
+          this.logger.log(`Runner ${runnerName} is healthy`)
+          return true
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      }
+    }
+
+    this.logger.log(`Default runner ${runnerName} did not become healthy in time`)
+    return false
+  }
+
+  private async waitForDefaultRunnerReady(): Promise<Runner | null> {
+    const defaultRegionId = this.configService.getOrThrow('defaultRegion.id')
+    const defaultRunnerName = this.configService.getOrThrow('defaultRunner.name')
+
+    for (let i = 0; i < 60; i++) {
+      const runners = await this.runnerService.findAllByRegion(defaultRegionId)
+      const defaultRunner = runners.find((runner) => runner.name === defaultRunnerName)
+      if (defaultRunner?.state === RunnerState.READY) {
+        return this.runnerService.findOneOrFail(defaultRunner.id)
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+    }
+
+    return null
+  }
+
+  private async getLocalRunnerSnapshotInfo(runner: Runner, snapshotName: string): Promise<RunnerSnapshotInfo | null> {
+    const candidateUrls = new Set<string>()
+
+    if (runner.apiUrl) {
+      candidateUrls.add(runner.apiUrl)
+    }
+
+    if (runner.name === this.configService.getOrThrow('defaultRunner.name')) {
+      candidateUrls.add(this.configService.getOrThrow('defaultRunner.apiUrl'))
+    }
+
+    for (const candidateUrl of candidateUrls) {
+      const axiosInstance = axios.create({
+        baseURL: candidateUrl,
+        headers: {
+          Authorization: `Bearer ${runner.apiKey}`,
+        },
+        timeout: 10_000,
+      })
+
+      const config = new RunnerApiConfiguration({
+        basePath: candidateUrl,
+      })
+
+      const snapshotsApi = new SnapshotsApi(config, undefined, axiosInstance)
+
+      try {
+        const response = await snapshotsApi.getSnapshotInfo(snapshotName)
+
+        return {
+          name: response.data.name || snapshotName,
+          sizeGB: response.data.sizeGB,
+          entrypoint: response.data.entrypoint || [],
+          cmd: response.data.cmd || [],
+          hash: response.data.hash,
+        }
+      } catch (error) {
+        if (error instanceof AxiosError && [404, 422].includes(error.response?.status || 0)) {
+          return null
+        }
+
+        this.logger.warn(
+          `Failed to inspect local snapshot ${snapshotName} on runner ${runner.name} via ${candidateUrl}: ${error}`,
+        )
+      }
+    }
+
+    return null
   }
 }

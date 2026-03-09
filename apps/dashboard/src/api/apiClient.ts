@@ -4,6 +4,7 @@
  */
 
 import {
+  AdminApi,
   ApiKeysApi,
   Configuration,
   DockerRegistryApi,
@@ -24,6 +25,7 @@ export class ApiClient {
   private config: Configuration
   private _snapshotApi: SnapshotsApi
   private _sandboxApi: SandboxApi
+  private _adminApi: AdminApi
   private _userApi: UsersApi
   private _apiKeyApi: ApiKeysApi
   private _dockerRegistryApi: DockerRegistryApi
@@ -60,6 +62,7 @@ export class ApiClient {
     // Initialize APIs
     this._snapshotApi = new SnapshotsApi(this.config, undefined, axiosInstance)
     this._sandboxApi = new SandboxApi(this.config, undefined, axiosInstance)
+    this._adminApi = new AdminApi(this.config, undefined, axiosInstance)
     this._userApi = new UsersApi(this.config, undefined, axiosInstance)
     this._apiKeyApi = new ApiKeysApi(this.config, undefined, axiosInstance)
     this._dockerRegistryApi = new DockerRegistryApi(this.config, undefined, axiosInstance)
@@ -80,6 +83,10 @@ export class ApiClient {
 
   public get sandboxApi() {
     return this._sandboxApi
+  }
+
+  public get adminApi() {
+    return this._adminApi
   }
 
   public get userApi() {

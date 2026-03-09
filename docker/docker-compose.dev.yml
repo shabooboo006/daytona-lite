@@ -78,10 +78,13 @@ services:
 
   runner:
     image: ${DAYTONA_DEV_RUNNER_IMAGE:-daytonaio/daytona-runner:latest}
+    entrypoint:
+      - /bin/sh
+      - /opt/daytona/entrypoint.dev.sh
     environment:
       - ENVIRONMENT=development
       - API_PORT=3003
-      - DAYTONA_RUNNER_TOKEN=${DEFAULT_RUNNER_API_KEY:-local_runner_key}
+      - DAYTONA_RUNNER_TOKEN=${DEFAULT_RUNNER_API_KEY:-secret_api_token}
       - LOG_FILE_PATH=/home/daytona/runner/runner.log
       - RESOURCE_LIMITS_DISABLED=true
       - AWS_ENDPOINT_URL=http://minio:9000
@@ -102,13 +105,15 @@ services:
       - SSH_GATEWAY_ENABLE=false
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - ./runner/daemon.dev.json:/etc/docker/daemon.json:ro
+      - ./runner/entrypoint.dev.sh:/opt/daytona/entrypoint.dev.sh:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/daytona-runner-binaries:/tmp/daytona-runner-binaries
     networks:
       - daytona-dev-network
     ports:
       - "3003:3003"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /tmp/daytona-runner-binaries:/tmp/daytona-runner-binaries
     privileged: true
     depends_on:
       - db

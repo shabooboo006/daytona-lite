@@ -1027,6 +1027,32 @@ export class RunnerService {
       },
     }
   }
+
+  async ensureSnapshotRunnerEntry(
+    runnerId: string,
+    snapshotRef: string,
+    state: SnapshotRunnerState,
+    errorReason?: string,
+  ): Promise<void> {
+    const existingSnapshotRunner = await this.snapshotRunnerRepository.findOne({
+      where: {
+        runnerId,
+        snapshotRef,
+      },
+      order: {
+        createdAt: 'ASC',
+      },
+    })
+
+    if (existingSnapshotRunner) {
+      existingSnapshotRunner.state = state
+      existingSnapshotRunner.errorReason = errorReason || null
+      await this.snapshotRunnerRepository.save(existingSnapshotRunner)
+      return
+    }
+
+    await this.createSnapshotRunnerEntry(runnerId, snapshotRef, state, errorReason)
+  }
 }
 
 export class GetRunnerParams {

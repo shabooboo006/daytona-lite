@@ -32,6 +32,7 @@ COPY apps/runner/docker-entrypoint.sh /usr/local/bin/daytona-runner-entrypoint.s
 
 RUN chmod +x daytona-runner
 RUN chmod +x /usr/local/bin/daytona-runner-entrypoint.sh
+RUN mkdir -p /etc/docker && echo '{"insecure-registries": ["registry:6000", "host.docker.internal:6000", "localhost:6000", "127.0.0.1:6000"]}' > /etc/docker/daemon.json
 
 HEALTHCHECK CMD [ "curl", "-f", "http://localhost:3003/" ]
 
